@@ -10,24 +10,33 @@
     background: #f0f0f0;
     flex-direction: column;
     gap: 20px;
+    overflow: hidden;
   }
 
   .carpet {
-    width: 800px;
-    height: 600px;
+    width: 100vw;
+    height: 100vh;
     position: relative;
-    border-radius: 10px;
-    box-shadow: 0 0 20px rgba(0,0,0,0.2);
     overflow: hidden;
     background-size: cover;
     background-position: center;
-    border: 15px solid #8B4513;
+    border: none;
+  }
+
+  .viewport {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transform-origin: center;
+    transition: transform 0.1s ease-out;
   }
 
   #canvas, #debugCanvas {
     position: absolute;
     top: 0;
     left: 0;
+    width: 2000px;  /* Larger canvas for more detailed world */
+    height: 1500px;
   }
 
   #debugCanvas {
@@ -37,16 +46,17 @@
 
   .car {
     position: absolute;
-    width: 30px;  
-    height: 30px;
+    width: 60px;  /* Bigger car */
+    height: 60px;
     transform-origin: center;
     transition: transform 0.1s;
+    z-index: 1000;
   }
 
   .coin {
     position: absolute;
-    width: 15px;
-    height: 15px;
+    width: 30px;  /* Bigger coins */
+    height: 30px;
     background: gold;
     border-radius: 50%;
     animation: coinSpin 1s infinite linear;
@@ -56,17 +66,6 @@
     0% { transform: scale(1); }
     50% { transform: scale(0.8); }
     100% { transform: scale(1); }
-  }
-
-  .carpet-border {
-    position: absolute;
-    top: -15px;
-    left: -15px;
-    right: -15px;
-    bottom: -15px;
-    border: 15px solid #8B4513;
-    border-radius: 20px;
-    pointer-events: none;
   }
 
   #score {
@@ -79,9 +78,17 @@
     padding: 10px;
     border-radius: 5px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    z-index: 2000;
   }
 
   .debug-controls {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 2000;
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
     display: flex;
     gap: 10px;
     align-items: center;
@@ -98,23 +105,25 @@
 </div>
 <div id="score">Score: 0</div>
 <div class="carpet">
-  <canvas id="canvas" width="800" height="600"></canvas>
-  <canvas id="debugCanvas" width="800" height="600"></canvas>
-  <svg id="car" class="car" viewBox="0 0 100 100">
-    <path d="M20,65 Q50,75 80,65 L90,45 Q50,35 10,45 L20,65" 
-          fill="#FF4444" stroke="#000" stroke-width="2"/>
-    <path d="M15,45 Q50,35 85,45 L80,30 Q50,20 20,30 L15,45" 
-          fill="#FF6666" stroke="#000" stroke-width="2"/>
-    <circle cx="30" cy="65" r="8" fill="#333"/>
-    <circle cx="70" cy="65" r="8" fill="#333"/>
-    <rect x="35" y="35" width="30" height="15" fill="#88CCFF" rx="2"/>
-    <line x1="50" y1="35" x2="50" y2="50" stroke="#333" stroke-width="2"/>
-  </svg>
-  <div class="carpet-border"></div>
+  <div class="viewport">
+    <canvas id="canvas" width="2000" height="1500"></canvas>
+    <canvas id="debugCanvas" width="2000" height="1500"></canvas>
+    <svg id="car" class="car" viewBox="0 0 100 100">
+      <path d="M20,65 Q50,75 80,65 L90,45 Q50,35 10,45 L20,65" 
+            fill="#FF4444" stroke="#000" stroke-width="2"/>
+      <path d="M15,45 Q50,35 85,45 L80,30 Q50,20 20,30 L15,45" 
+            fill="#FF6666" stroke="#000" stroke-width="2"/>
+      <circle cx="30" cy="65" r="8" fill="#333"/>
+      <circle cx="70" cy="65" r="8" fill="#333"/>
+      <rect x="35" y="35" width="30" height="15" fill="#88CCFF" rx="2"/>
+      <line x1="50" y1="35" x2="50" y2="50" stroke="#333" stroke-width="2"/>
+    </svg>
+  </div>
 </div>
 
 <script>
 const carpet = document.querySelector('.carpet');
+const viewport = document.querySelector('.viewport');
 const canvas = document.getElementById('canvas');
 const debugCanvas = document.getElementById('debugCanvas');
 const ctx = canvas.getContext('2d');
@@ -127,11 +136,12 @@ const newMapButton = document.getElementById('newMap');
 let roadPoints = [];
 let coins = [];
 let score = 0;
-let carX = 400;
-let carY = 300;
+let carX = canvas.width / 2;
+let carY = canvas.height / 2;
 let targetX = carX;
 let targetY = carY;
 let scoreElement = document.getElementById('score');
+const ZOOM_LEVEL = 2;  // Zoom factor
 
 showDebugCheckbox.addEventListener('change', () => {
   debugCanvas.style.display = showDebugCheckbox.checked ? 'block' : 'none';
@@ -150,7 +160,17 @@ function loadNewMap() {
     detectRoads();
   };
   
-  carpet.style.backgroundImage = `url(${img.src})`;
+  viewport.style.backgroundImage = `url(${img.src})`;
+  viewport.style.backgroundSize = `${canvas.width}px ${canvas.height}px`;
+}
+
+function updateViewport() {
+  const screenCenterX = window.innerWidth / 2;
+  const screenCenterY = window.innerHeight / 2;
+  const translateX = screenCenterX - carX * ZOOM_LEVEL;
+  const translateY = screenCenterY - carY * ZOOM_LEVEL;
+  
+  viewport.style.transform = `translate(${translateX}px, ${translateY}px) scale(${ZOOM_LEVEL})`;
 }
 
 newMapButton.addEventListener('click', loadNewMap);
@@ -213,7 +233,7 @@ function detectRoads() {
   coins.forEach(coin => coin.remove());
   coins = [];
   
-  for(let i = 0; i < 10; i++) {
+  for(let i = 0; i < 20; i++) {  // More coins
     if(roadPoints.length > 0) {
       const randomIndex = Math.floor(Math.random() * roadPoints.length);
       const point = roadPoints[randomIndex];
@@ -229,33 +249,44 @@ function createCoin(x, y) {
   coin.className = 'coin';
   coin.style.left = x + 'px';
   coin.style.top = y + 'px';
-  carpet.appendChild(coin);
+  viewport.appendChild(coin);
   coins.push(coin);
 }
 
 carpet.addEventListener('mousemove', (e) => {
   const rect = carpet.getBoundingClientRect();
-  targetX = e.clientX - rect.left;
-  targetY = e.clientY - rect.top;
+  const screenX = e.clientX - rect.left;
+  const screenY = e.clientY - rect.top;
+  
+  // Convert screen coordinates to world coordinates
+  const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
+  const inverse = viewportTransform.inverse();
+  const point = new DOMPoint(screenX, screenY).matrixTransform(inverse);
+  
+  targetX = point.x;
+  targetY = point.y;
 });
 
 function checkCollision(carX, carY, coinElement) {
   const coinRect = coinElement.getBoundingClientRect();
   const carpetRect = carpet.getBoundingClientRect();
-  const coinX = coinRect.left - carpetRect.left;
-  const coinY = coinRect.top - carpetRect.top;
+  const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
+  const inverse = viewportTransform.inverse();
+  
+  const coinPoint = new DOMPoint(coinRect.left - carpetRect.left, coinRect.top - carpetRect.top)
+    .matrixTransform(inverse);
   
   const distance = Math.sqrt(
-    Math.pow(carX - coinX, 2) + 
-    Math.pow(carY - coinY, 2)
+    Math.pow(carX - coinPoint.x, 2) + 
+    Math.pow(carY - coinPoint.y, 2)
   );
   
-  return distance < 30;
+  return distance < 60;  // Larger collision radius
 }
 
 function updateCar() {
-  const dx = targetX - (carX + 15); 
-  const dy = targetY - (carY + 15); 
+  const dx = targetX - carX;
+  const dy = targetY - carY;
   const angle = Math.atan2(dy, dx) * 180 / Math.PI;
   const distance = Math.sqrt(dx * dx + dy * dy);
   
@@ -266,13 +297,15 @@ function updateCar() {
     carY += Math.sin(angle * Math.PI / 180) * speed;
   }
   
-  carX = Math.max(0, Math.min(carX, carpet.clientWidth - 30));
-  carY = Math.max(0, Math.min(carY, carpet.clientHeight - 30));
+  carX = Math.max(30, Math.min(carX, canvas.width - 30));
+  carY = Math.max(30, Math.min(carY, canvas.height - 30));
   
   car.style.transform = `translate(${carX}px, ${carY}px) rotate(${angle + 90}deg)`;
   
+  updateViewport();
+  
   coins.forEach((coin, index) => {
-    if(checkCollision(carX + 15, carY + 15, coin)) { 
+    if(checkCollision(carX, carY, coin)) {
       coin.remove();
       coins.splice(index, 1);
       score += 10;
