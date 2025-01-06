@@ -23,58 +23,11 @@
     border: 15px solid #8B4513;
   }
 
-  .road {
-    background: rgba(85, 85, 85, 0.6);
+  #canvas {
     position: absolute;
-  }
-
-  .road-h {
-    height: 40px;
-    width: 100%;
-  }
-
-  .road-v {
-    width: 40px;
-    height: 100%;
-  }
-
-  .road-lines {
-    position: absolute;
-    background: rgba(255, 255, 255, 0.8);
-    height: 4px;
-    width: 30px;
-    top: 50%;
-    transform: translateY(-50%);
-    animation: moveLines 2s linear infinite;
-  }
-
-  @keyframes moveLines {
-    from { transform: translateX(-100%) translateY(-50%); }
-    to { transform: translateX(800px) translateY(-50%); }
-  }
-
-  .building {
-    position: absolute;
-    background: rgba(255, 255, 255, 0.8);
-    border: 2px solid #333;
-    transition: transform 0.3s ease;
-  }
-
-  .tree {
-    position: absolute;
-    width: 30px;
-    height: 40px;
-  }
-
-  .car {
-    position: absolute;
-    width: 30px;
-    height: 20px;
-    background: red;
-    border-radius: 5px;
-    animation: driveCar 8s linear infinite;
-    transition: background-color 0.3s ease;
-    cursor: pointer;
+    top: 0;
+    left: 0;
+    pointer-events: none;
   }
 
   .carpet-border {
@@ -92,68 +45,65 @@
 </head>
 <body>
 <div class="carpet">
-  <!-- Horizontal Roads -->
-  <div class="road road-h" style="top: 150px;">
-    <div class="road-lines"></div>
-  </div>
-  <div class="road road-h" style="top: 400px;">
-    <div class="road-lines"></div>
-  </div>
-  
-  <!-- Vertical Roads -->
-  <div class="road road-v" style="left: 200px;"></div>
-  <div class="road road-v" style="left: 600px;"></div>
-
-  <!-- Buildings -->
-  <div class="building" style="width: 80px; height: 100px; top: 20px; left: 80px; background: rgba(255, 224, 130, 0.8);"></div>
-  <div class="building" style="width: 60px; height: 70px; top: 40px; left: 300px; background: rgba(144, 202, 249, 0.8);"></div>
-  <div class="building" style="width: 90px; height: 120px; top: 250px; left: 400px; background: rgba(239, 154, 154, 0.8);"></div>
-  <div class="building" style="width: 70px; height: 90px; top: 450px; left: 100px; background: rgba(179, 157, 219, 0.8);"></div>
-
-  <!-- Trees (using SVG) -->
-  <svg class="tree" style="top: 50px; left: 500px">
-    <circle cx="15" cy="15" r="12" fill="rgba(46, 125, 50, 0.8)"/>
-    <rect x="13" y="25" width="4" height="10" fill="rgba(78, 52, 46, 0.8)"/>
-  </svg>
-
-  <svg class="tree" style="top: 200px; left: 100px">
-    <circle cx="15" cy="15" r="12" fill="rgba(46, 125, 50, 0.8)"/>
-    <rect x="13" y="25" width="4" height="10" fill="rgba(78, 52, 46, 0.8)"/>
-  </svg>
-
-  <svg class="tree" style="top: 500px; left: 300px">
-    <circle cx="15" cy="15" r="12" fill="rgba(46, 125, 50, 0.8)"/>
-    <rect x="13" y="25" width="4" height="10" fill="rgba(78, 52, 46, 0.8)"/>
-  </svg>
-
-  <!-- Cars -->
-  <div class="car" style="top: 160px; background: rgba(244, 67, 54, 0.8);"></div>
-  <div class="car" style="top: 410px; background: rgba(33, 150, 243, 0.8);"></div>
-
-  <!-- Playground -->
-  <svg style="position: absolute; top: 250px; left: 700px; width: 60px; height: 60px">
-    <circle cx="30" cy="30" r="25" fill="rgba(253, 216, 53, 0.8)" stroke="#000" stroke-width="2"/>
-    <rect x="20" y="15" width="20" height="30" fill="rgba(62, 39, 35, 0.8)"/>
-  </svg>
-
+  <canvas id="canvas" width="800" height="600"></canvas>
   <div class="carpet-border"></div>
 </div>
 
 <script>
-// Add some interactive elements
-document.querySelectorAll('.car').forEach(car => {
-  car.addEventListener('click', () => {
-    car.style.backgroundColor = '#' + Math.floor(Math.random()*16777215).toString(16);
-  });
-});
+// Create an image processing system to detect roads
+const carpet = document.querySelector('.carpet');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
-document.querySelectorAll('.building').forEach(building => {
-  building.addEventListener('mouseover', () => {
-    building.style.transform = 'scale(1.1)';
-  });
-  building.addEventListener('mouseout', () => {
-    building.style.transform = 'scale(1)';
-  });
+// Create a new image object
+const img = new Image();
+img.crossOrigin = "Anonymous";  // Enable CORS
+img.src = 'https://image.pollinations.ai/prompt/A%20colorful%20children%27s%20play%20carpet%20with%20roads,%20buildings,%20and%20trees,%20birds-eye%20view,%20vintage%20style,%20warm%20colors,%20educational%20toy';
+
+img.onload = function() {
+  // Draw the image on the canvas
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  
+  // Get image data
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  // Process the image to detect roads (looking for dark pixels that could be roads)
+  ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)';
+  ctx.lineWidth = 2;
+  
+  // Analyze every 10th pixel for performance
+  for(let y = 0; y < canvas.height; y += 10) {
+    for(let x = 0; x < canvas.width; x += 10) {
+      const index = (y * canvas.width + x) * 4;
+      const r = data[index];
+      const g = data[index + 1];
+      const b = data[index + 2];
+      
+      // Calculate brightness
+      const brightness = (r + g + b) / 3;
+      
+      // If pixel is dark enough (potential road)
+      if(brightness < 100) {
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+};
+
+// Add click handler to show coordinates and color values
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  
+  const imageData = ctx.getImageData(x, y, 1, 1);
+  const data = imageData.data;
+  
+  console.log(`Position: (${x}, ${y})`);
+  console.log(`Color: RGB(${data[0]}, ${data[1]}, ${data[2]})`);
 });
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
