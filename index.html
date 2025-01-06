@@ -2,7 +2,7 @@
 <style>
   body {
     margin: 0;
-    padding: 20px;
+    padding: 0;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -35,7 +35,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 2000px;  /* Larger canvas for more detailed world */
+    width: 2000px;
     height: 1500px;
   }
 
@@ -46,7 +46,7 @@
 
   .car {
     position: absolute;
-    width: 60px;  /* Bigger car */
+    width: 60px;
     height: 60px;
     transform-origin: center;
     transition: transform 0.1s;
@@ -55,7 +55,7 @@
 
   .coin {
     position: absolute;
-    width: 30px;  /* Bigger coins */
+    width: 30px;
     height: 30px;
     background: gold;
     border-radius: 50%;
@@ -141,10 +141,7 @@ let carY = canvas.height / 2;
 let targetX = carX;
 let targetY = carY;
 let scoreElement = document.getElementById('score');
-const ZOOM_LEVEL = 2;  // Zoom factor
-
-// Initialize car position
-car.style.transform = `translate(${carX}px, ${carY}px)`;
+const ZOOM_LEVEL = 2;
 
 showDebugCheckbox.addEventListener('change', () => {
   debugCanvas.style.display = showDebugCheckbox.checked ? 'block' : 'none';
@@ -161,29 +158,30 @@ function loadNewMap() {
   img.onload = function() {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     detectRoads();
-    // Reset car position to center of canvas when loading new map
+    // Reset car and target position to center
     carX = canvas.width / 2;
     carY = canvas.height / 2;
     targetX = carX;
     targetY = carY;
-    car.style.transform = `translate(${carX}px, ${carY}px)`;
+    updateCarPosition();
     updateViewport();
   };
 }
 
 function updateViewport() {
+  // Calculate the position to keep the car centered
   const screenCenterX = window.innerWidth / 2;
   const screenCenterY = window.innerHeight / 2;
   
-  // Keep car centered by making the viewport move opposite to car movement
-  const translateX = screenCenterX - carX * ZOOM_LEVEL;
-  const translateY = screenCenterY - carY * ZOOM_LEVEL;
+  const translateX = screenCenterX - (carX * ZOOM_LEVEL);
+  const translateY = screenCenterY - (carY * ZOOM_LEVEL);
   
   viewport.style.transform = `translate(${translateX}px, ${translateY}px) scale(${ZOOM_LEVEL})`;
 }
 
-// Set initial viewport position
-updateViewport();
+function updateCarPosition() {
+  car.style.transform = `translate(${carX - car.clientWidth/2}px, ${carY - car.clientHeight/2}px)`;
+}
 
 newMapButton.addEventListener('click', loadNewMap);
 
@@ -312,7 +310,7 @@ function updateCar() {
   carX = Math.max(30, Math.min(carX, canvas.width - 30));
   carY = Math.max(30, Math.min(carY, canvas.height - 30));
   
-  car.style.transform = `translate(${carX}px, ${carY}px) rotate(${angle + 90}deg)`;
+  car.style.transform = `translate(${carX - car.clientWidth/2}px, ${carY - car.clientHeight/2}px) rotate(${angle + 90}deg)`;
   
   updateViewport();
   
