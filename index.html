@@ -37,8 +37,8 @@
 
   .car {
     position: absolute;
-    width: 40px;
-    height: 40px;
+    width: 30px;  
+    height: 30px;
     transform-origin: center;
     transition: transform 0.1s;
   }
@@ -101,10 +101,14 @@
   <canvas id="canvas" width="800" height="600"></canvas>
   <canvas id="debugCanvas" width="800" height="600"></canvas>
   <svg id="car" class="car" viewBox="0 0 100 100">
-    <path d="M10,50 C10,30 30,20 50,20 C70,20 90,30 90,50 C90,70 70,80 50,80 C30,80 10,70 10,50 Z" 
-          fill="red" stroke="black" stroke-width="2"/>
-    <rect x="20" y="35" width="20" height="10" fill="lightblue"/>
-    <rect x="60" y="35" width="20" height="10" fill="lightblue"/>
+    <path d="M20,65 Q50,75 80,65 L90,45 Q50,35 10,45 L20,65" 
+          fill="#FF4444" stroke="#000" stroke-width="2"/>
+    <path d="M15,45 Q50,35 85,45 L80,30 Q50,20 20,30 L15,45" 
+          fill="#FF6666" stroke="#000" stroke-width="2"/>
+    <circle cx="30" cy="65" r="8" fill="#333"/>
+    <circle cx="70" cy="65" r="8" fill="#333"/>
+    <rect x="35" y="35" width="30" height="15" fill="#88CCFF" rx="2"/>
+    <line x1="50" y1="35" x2="50" y2="50" stroke="#333" stroke-width="2"/>
   </svg>
   <div class="carpet-border"></div>
 </div>
@@ -250,8 +254,8 @@ function checkCollision(carX, carY, coinElement) {
 }
 
 function updateCar() {
-  const dx = targetX - carX;
-  const dy = targetY - carY;
+  const dx = targetX - (carX + 15); 
+  const dy = targetY - (carY + 15); 
   const angle = Math.atan2(dy, dx) * 180 / Math.PI;
   const distance = Math.sqrt(dx * dx + dy * dy);
   
@@ -262,13 +266,13 @@ function updateCar() {
     carY += Math.sin(angle * Math.PI / 180) * speed;
   }
   
-  carX = Math.max(0, Math.min(carX, carpet.clientWidth - 40));
-  carY = Math.max(0, Math.min(carY, carpet.clientHeight - 40));
+  carX = Math.max(0, Math.min(carX, carpet.clientWidth - 30));
+  carY = Math.max(0, Math.min(carY, carpet.clientHeight - 30));
   
   car.style.transform = `translate(${carX}px, ${carY}px) rotate(${angle + 90}deg)`;
   
   coins.forEach((coin, index) => {
-    if(checkCollision(carX, carY, coin)) {
+    if(checkCollision(carX + 15, carY + 15, coin)) { 
       coin.remove();
       coins.splice(index, 1);
       score += 10;
