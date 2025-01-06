@@ -19,7 +19,6 @@
     border-radius: 10px;
     box-shadow: 0 0 20px rgba(0,0,0,0.2);
     overflow: hidden;
-    background-image: url('https://image.pollinations.ai/prompt/A%20colorful%20children%27s%20play%20carpet%20with%20roads,%20buildings,%20and%20trees,%20birds-eye%20view,%20vintage%20style,%20warm%20colors,%20educational%20toy,%20white%20road%20lines,%20dashed%20center%20lines');
     background-size: cover;
     background-position: center;
     border: 15px solid #8B4513;
@@ -38,10 +37,8 @@
 
   .car {
     position: absolute;
-    width: 30px;
-    height: 20px;
-    background: red;
-    border-radius: 5px;
+    width: 40px;
+    height: 40px;
     transform-origin: center;
     transition: transform 0.1s;
   }
@@ -97,12 +94,18 @@
     <input type="checkbox" id="showDebug"> Show Road Detection Debug View
   </label>
   <button id="redetectRoads">Redetect Roads</button>
+  <button id="newMap">New Map</button>
 </div>
 <div id="score">Score: 0</div>
 <div class="carpet">
   <canvas id="canvas" width="800" height="600"></canvas>
   <canvas id="debugCanvas" width="800" height="600"></canvas>
-  <div id="car" class="car"></div>
+  <svg id="car" class="car" viewBox="0 0 100 100">
+    <path d="M10,50 C10,30 30,20 50,20 C70,20 90,30 90,50 C90,70 70,80 50,80 C30,80 10,70 10,50 Z" 
+          fill="red" stroke="black" stroke-width="2"/>
+    <rect x="20" y="35" width="20" height="10" fill="lightblue"/>
+    <rect x="60" y="35" width="20" height="10" fill="lightblue"/>
+  </svg>
   <div class="carpet-border"></div>
 </div>
 
@@ -115,14 +118,15 @@ const debugCtx = debugCanvas.getContext('2d');
 const car = document.getElementById('car');
 const showDebugCheckbox = document.getElementById('showDebug');
 const redetectButton = document.getElementById('redetectRoads');
+const newMapButton = document.getElementById('newMap');
 
 let roadPoints = [];
 let coins = [];
 let score = 0;
 let carX = 400;
 let carY = 300;
-let carAngle = 0;
-let speed = 0;
+let targetX = carX;
+let targetY = carY;
 let scoreElement = document.getElementById('score');
 
 showDebugCheckbox.addEventListener('change', () => {
@@ -131,9 +135,23 @@ showDebugCheckbox.addEventListener('change', () => {
 
 debugCanvas.style.display = 'none';
 
-const img = new Image();
-img.crossOrigin = "Anonymous";
-img.src = 'https://image.pollinations.ai/prompt/A%20colorful%20children%27s%20play%20carpet%20with%20roads,%20buildings,%20and%20trees,%20birds-eye%20view,%20vintage%20style,%20warm%20colors,%20educational%20toy,%20white%20road%20lines,%20dashed%20center%20lines';
+function loadNewMap() {
+  const timestamp = new Date().getTime(); 
+  const img = new Image();
+  img.crossOrigin = "Anonymous";
+  img.src = `https://image.pollinations.ai/prompt/A%20colorful%20children%27s%20play%20carpet%20with%20roads,%20buildings,%20and%20trees,%20birds-eye%20view,%20vintage%20style,%20warm%20colors,%20educational%20toy,%20white%20road%20lines,%20dashed%20center%20lines?${timestamp}`;
+  
+  img.onload = function() {
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    detectRoads();
+  };
+  
+  carpet.style.backgroundImage = `url(${img.src})`;
+}
+
+newMapButton.addEventListener('click', loadNewMap);
+
+loadNewMap();
 
 function isWhitePixel(r, g, b) {
   const threshold = 200;
@@ -157,12 +175,10 @@ function detectRoads() {
       const b = data[index + 2];
       
       if(isWhitePixel(r, g, b)) {
-        // Look for parallel white lines within a radius
         let roadFound = false;
         for(let radius = 10; radius < 40; radius += 5) {
           let whitePixelsFound = 0;
           
-          // Check in a circle around the current point
           for(let angle = 0; angle < 360; angle += 45) {
             const radians = angle * Math.PI / 180;
             const checkX = x + Math.cos(radians) * radius;
@@ -190,11 +206,9 @@ function detectRoads() {
     }
   }
   
-  // Remove all existing coins
   coins.forEach(coin => coin.remove());
   coins = [];
   
-  // Place new coins on detected road points
   for(let i = 0; i < 10; i++) {
     if(roadPoints.length > 0) {
       const randomIndex = Math.floor(Math.random() * roadPoints.length);
@@ -204,14 +218,7 @@ function detectRoads() {
   }
 }
 
-img.onload = function() {
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  detectRoads();
-};
-
-redetectButton.addEventListener('click', () => {
-  detectRoads();
-});
+redetectButton.addEventListener('click', detectRoads);
 
 function createCoin(x, y) {
   const coin = document.createElement('div');
@@ -221,6 +228,12 @@ function createCoin(x, y) {
   carpet.appendChild(coin);
   coins.push(coin);
 }
+
+carpet.addEventListener('mousemove', (e) => {
+  const rect = carpet.getBoundingClientRect();
+  targetX = e.clientX - rect.left;
+  targetY = e.clientY - rect.top;
+});
 
 function checkCollision(carX, carY, coinElement) {
   const coinRect = coinElement.getBoundingClientRect();
@@ -237,7 +250,22 @@ function checkCollision(carX, carY, coinElement) {
 }
 
 function updateCar() {
-  car.style.transform = `translate(${carX}px, ${carY}px) rotate(${carAngle}deg)`;
+  const dx = targetX - carX;
+  const dy = targetY - carY;
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  const speed = Math.min(distance * 0.1, 5);
+  
+  if(distance > 1) {
+    carX += Math.cos(angle * Math.PI / 180) * speed;
+    carY += Math.sin(angle * Math.PI / 180) * speed;
+  }
+  
+  carX = Math.max(0, Math.min(carX, carpet.clientWidth - 40));
+  carY = Math.max(0, Math.min(carY, carpet.clientHeight - 40));
+  
+  car.style.transform = `translate(${carX}px, ${carY}px) rotate(${angle + 90}deg)`;
   
   coins.forEach((coin, index) => {
     if(checkCollision(carX, carY, coin)) {
@@ -255,24 +283,7 @@ function updateCar() {
   });
 }
 
-const keys = {};
-document.addEventListener('keydown', (e) => keys[e.key] = true);
-document.addEventListener('keyup', (e) => keys[e.key] = false);
-
 function gameLoop() {
-  if(keys['ArrowUp']) speed = Math.min(speed + 0.2, 5);
-  if(keys['ArrowDown']) speed = Math.max(speed - 0.2, -2);
-  if(!keys['ArrowUp'] && !keys['ArrowDown']) speed *= 0.95;
-  
-  if(keys['ArrowLeft']) carAngle -= 3;
-  if(keys['ArrowRight']) carAngle += 3;
-  
-  carX += Math.sin(carAngle * Math.PI / 180) * speed;
-  carY -= Math.cos(carAngle * Math.PI / 180) * speed;
-  
-  carX = Math.max(0, Math.min(carX, carpet.clientWidth - car.clientWidth));
-  carY = Math.max(0, Math.min(carY, carpet.clientHeight - car.clientHeight));
-  
   updateCar();
   requestAnimationFrame(gameLoop);
 }
