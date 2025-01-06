@@ -158,15 +158,20 @@ function loadNewMap() {
   img.onload = function() {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     detectRoads();
+    // Reset car position to center of canvas when loading new map
+    carX = canvas.width / 2;
+    carY = canvas.height / 2;
+    targetX = carX;
+    targetY = carY;
+    updateViewport();
   };
-  
-  viewport.style.backgroundImage = `url(${img.src})`;
-  viewport.style.backgroundSize = `${canvas.width}px ${canvas.height}px`;
 }
 
 function updateViewport() {
   const screenCenterX = window.innerWidth / 2;
   const screenCenterY = window.innerHeight / 2;
+  
+  // Keep car centered by making the viewport move opposite to car movement
   const translateX = screenCenterX - carX * ZOOM_LEVEL;
   const translateY = screenCenterY - carY * ZOOM_LEVEL;
   
@@ -175,6 +180,7 @@ function updateViewport() {
 
 newMapButton.addEventListener('click', loadNewMap);
 
+// Initial load
 loadNewMap();
 
 function isWhitePixel(r, g, b) {
@@ -233,7 +239,7 @@ function detectRoads() {
   coins.forEach(coin => coin.remove());
   coins = [];
   
-  for(let i = 0; i < 20; i++) {  // More coins
+  for(let i = 0; i < 20; i++) {
     if(roadPoints.length > 0) {
       const randomIndex = Math.floor(Math.random() * roadPoints.length);
       const point = roadPoints[randomIndex];
@@ -258,7 +264,6 @@ carpet.addEventListener('mousemove', (e) => {
   const screenX = e.clientX - rect.left;
   const screenY = e.clientY - rect.top;
   
-  // Convert screen coordinates to world coordinates
   const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
   const inverse = viewportTransform.inverse();
   const point = new DOMPoint(screenX, screenY).matrixTransform(inverse);
@@ -281,7 +286,7 @@ function checkCollision(carX, carY, coinElement) {
     Math.pow(carY - coinPoint.y, 2)
   );
   
-  return distance < 60;  // Larger collision radius
+  return distance < 60;
 }
 
 function updateCar() {
@@ -325,8 +330,7 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-car.style.left = carX + 'px';
-car.style.top = carY + 'px';
+// Start game loop
 gameLoop();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
