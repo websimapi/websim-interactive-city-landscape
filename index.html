@@ -2,7 +2,7 @@
 <style>
   body {
     margin: 0;
-    padding: 0;
+    padding: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -35,7 +35,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 2000px;
+    width: 2000px;  
     height: 1500px;
   }
 
@@ -46,7 +46,7 @@
 
   .car {
     position: absolute;
-    width: 60px;
+    width: 60px;  
     height: 60px;
     transform-origin: center;
     transition: transform 0.1s;
@@ -55,7 +55,7 @@
 
   .coin {
     position: absolute;
-    width: 30px;
+    width: 30px;  
     height: 30px;
     background: gold;
     border-radius: 50%;
@@ -141,7 +141,7 @@ let carY = canvas.height / 2;
 let targetX = carX;
 let targetY = carY;
 let scoreElement = document.getElementById('score');
-const ZOOM_LEVEL = 2;
+const ZOOM_LEVEL = 2;  // Zoom factor
 
 showDebugCheckbox.addEventListener('change', () => {
   debugCanvas.style.display = showDebugCheckbox.checked ? 'block' : 'none';
@@ -158,34 +158,28 @@ function loadNewMap() {
   img.onload = function() {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     detectRoads();
-    // Reset car and target position to center
     carX = canvas.width / 2;
     carY = canvas.height / 2;
     targetX = carX;
     targetY = carY;
-    updateCarPosition();
     updateViewport();
   };
 }
 
 function updateViewport() {
-  // Calculate the position to keep the car centered
+  // Calculate the position where the car should be on screen (center)
   const screenCenterX = window.innerWidth / 2;
   const screenCenterY = window.innerHeight / 2;
   
+  // Calculate the transform needed to keep the car centered
   const translateX = screenCenterX - (carX * ZOOM_LEVEL);
   const translateY = screenCenterY - (carY * ZOOM_LEVEL);
   
   viewport.style.transform = `translate(${translateX}px, ${translateY}px) scale(${ZOOM_LEVEL})`;
 }
 
-function updateCarPosition() {
-  car.style.transform = `translate(${carX - car.clientWidth/2}px, ${carY - car.clientHeight/2}px)`;
-}
-
 newMapButton.addEventListener('click', loadNewMap);
 
-// Initial load
 loadNewMap();
 
 function isWhitePixel(r, g, b) {
@@ -310,7 +304,7 @@ function updateCar() {
   carX = Math.max(30, Math.min(carX, canvas.width - 30));
   carY = Math.max(30, Math.min(carY, canvas.height - 30));
   
-  car.style.transform = `translate(${carX - car.clientWidth/2}px, ${carY - car.clientHeight/2}px) rotate(${angle + 90}deg)`;
+  car.style.transform = `translate(${carX - 30}px, ${carY - 30}px) rotate(${angle + 90}deg)`;
   
   updateViewport();
   
@@ -335,7 +329,6 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-// Start game loop
 gameLoop();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
