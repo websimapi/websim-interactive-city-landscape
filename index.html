@@ -27,7 +27,31 @@
     position: absolute;
     top: 0;
     left: 0;
-    pointer-events: none;
+  }
+
+  .car {
+    position: absolute;
+    width: 30px;
+    height: 20px;
+    background: red;
+    border-radius: 5px;
+    transform-origin: center;
+    transition: transform 0.1s;
+  }
+
+  .coin {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    background: gold;
+    border-radius: 50%;
+    animation: coinSpin 1s infinite linear;
+  }
+
+  @keyframes coinSpin {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.8); }
+    100% { transform: scale(1); }
   }
 
   .carpet-border {
@@ -41,70 +65,144 @@
     pointer-events: none;
   }
 
+  #score {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    font-size: 24px;
+    font-family: Arial, sans-serif;
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
 </style>
 </head>
 <body>
+<div id="score">Score: 0</div>
 <div class="carpet">
   <canvas id="canvas" width="800" height="600"></canvas>
+  <div id="car" class="car"></div>
   <div class="carpet-border"></div>
 </div>
 
 <script>
-// Create an image processing system to detect roads
 const carpet = document.querySelector('.carpet');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const car = document.getElementById('car');
+let roadPoints = [];
+let coins = [];
+let score = 0;
+let carX = 400;
+let carY = 300;
+let carAngle = 0;
+let speed = 0;
+let scoreElement = document.getElementById('score');
 
 // Create a new image object
 const img = new Image();
-img.crossOrigin = "Anonymous";  // Enable CORS
+img.crossOrigin = "Anonymous";
 img.src = 'https://image.pollinations.ai/prompt/A%20colorful%20children%27s%20play%20carpet%20with%20roads,%20buildings,%20and%20trees,%20birds-eye%20view,%20vintage%20style,%20warm%20colors,%20educational%20toy';
 
 img.onload = function() {
-  // Draw the image on the canvas
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  
-  // Get image data
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   
-  // Process the image to detect roads (looking for dark pixels that could be roads)
-  ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)';
-  ctx.lineWidth = 2;
-  
-  // Analyze every 10th pixel for performance
-  for(let y = 0; y < canvas.height; y += 10) {
-    for(let x = 0; x < canvas.width; x += 10) {
+  // Process the image to detect roads
+  for(let y = 0; y < canvas.height; y += 20) {
+    for(let x = 0; x < canvas.width; x += 20) {
       const index = (y * canvas.width + x) * 4;
-      const r = data[index];
-      const g = data[index + 1];
-      const b = data[index + 2];
+      const brightness = (data[index] + data[index + 1] + data[index + 2]) / 3;
       
-      // Calculate brightness
-      const brightness = (r + g + b) / 3;
-      
-      // If pixel is dark enough (potential road)
       if(brightness < 100) {
-        ctx.beginPath();
-        ctx.arc(x, y, 2, 0, Math.PI * 2);
-        ctx.stroke();
+        roadPoints.push({x, y});
       }
+    }
+  }
+  
+  // Place coins on detected road points
+  for(let i = 0; i < 10; i++) {
+    if(roadPoints.length > 0) {
+      const randomIndex = Math.floor(Math.random() * roadPoints.length);
+      const point = roadPoints[randomIndex];
+      createCoin(point.x, point.y);
     }
   }
 };
 
-// Add click handler to show coordinates and color values
-canvas.addEventListener('click', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+function createCoin(x, y) {
+  const coin = document.createElement('div');
+  coin.className = 'coin';
+  coin.style.left = x + 'px';
+  coin.style.top = y + 'px';
+  carpet.appendChild(coin);
+  coins.push(coin);
+}
+
+function checkCollision(carX, carY, coinElement) {
+  const coinRect = coinElement.getBoundingClientRect();
+  const carpetRect = carpet.getBoundingClientRect();
+  const coinX = coinRect.left - carpetRect.left;
+  const coinY = coinRect.top - carpetRect.top;
   
-  const imageData = ctx.getImageData(x, y, 1, 1);
-  const data = imageData.data;
+  const distance = Math.sqrt(
+    Math.pow(carX - coinX, 2) + 
+    Math.pow(carY - coinY, 2)
+  );
   
-  console.log(`Position: (${x}, ${y})`);
-  console.log(`Color: RGB(${data[0]}, ${data[1]}, ${data[2]})`);
-});
+  return distance < 30;
+}
+
+function updateCar() {
+  car.style.transform = `translate(${carX}px, ${carY}px) rotate(${carAngle}deg)`;
+  
+  coins.forEach((coin, index) => {
+    if(checkCollision(carX, carY, coin)) {
+      coin.remove();
+      coins.splice(index, 1);
+      score += 10;
+      scoreElement.textContent = `Score: ${score}`;
+      
+      // Create new coin
+      if(roadPoints.length > 0) {
+        const randomIndex = Math.floor(Math.random() * roadPoints.length);
+        const point = roadPoints[randomIndex];
+        createCoin(point.x, point.y);
+      }
+    }
+  });
+}
+
+// Key controls
+const keys = {};
+document.addEventListener('keydown', (e) => keys[e.key] = true);
+document.addEventListener('keyup', (e) => keys[e.key] = false);
+
+function gameLoop() {
+  if(keys['ArrowUp']) speed = Math.min(speed + 0.2, 5);
+  if(keys['ArrowDown']) speed = Math.max(speed - 0.2, -2);
+  if(!keys['ArrowUp'] && !keys['ArrowDown']) speed *= 0.95;
+  
+  if(keys['ArrowLeft']) carAngle -= 3;
+  if(keys['ArrowRight']) carAngle += 3;
+  
+  carX += Math.sin(carAngle * Math.PI / 180) * speed;
+  carY -= Math.cos(carAngle * Math.PI / 180) * speed;
+  
+  // Keep car within bounds
+  carX = Math.max(0, Math.min(carX, carpet.clientWidth - car.clientWidth));
+  carY = Math.max(0, Math.min(carY, carpet.clientHeight - car.clientHeight));
+  
+  updateCar();
+  requestAnimationFrame(gameLoop);
+}
+
+// Start the game
+car.style.left = carX + 'px';
+car.style.top = carY + 'px';
+gameLoop();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body></html>
