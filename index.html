@@ -165,11 +165,16 @@ function loadNewMap() {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     detectRoads();
     
-    // Reset car position after loading new map
+    // Initialize car position to center of canvas
     carX = canvas.width / 2;
     carY = canvas.height / 2;
     targetX = carX;
     targetY = carY;
+    
+    // Update viewport to center on car
+    updateViewport();
+    
+    // Update car position
     car.style.transform = `translate(${carX}px, ${carY}px)`;
   };
 }
@@ -177,6 +182,8 @@ function loadNewMap() {
 function updateViewport() {
   const screenCenterX = window.innerWidth / 2;
   const screenCenterY = window.innerHeight / 2;
+  
+  // Calculate translation to keep car centered
   const translateX = screenCenterX - carX * ZOOM_LEVEL;
   const translateY = screenCenterY - carY * ZOOM_LEVEL;
   
@@ -184,8 +191,6 @@ function updateViewport() {
 }
 
 newMapButton.addEventListener('click', loadNewMap);
-
-loadNewMap();
 
 function isWhitePixel(r, g, b) {
   const threshold = 200;
@@ -334,6 +339,7 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
+loadNewMap();
 gameLoop();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
