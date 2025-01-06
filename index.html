@@ -143,6 +143,9 @@ let targetY = carY;
 let scoreElement = document.getElementById('score');
 const ZOOM_LEVEL = 2;  // Zoom factor
 
+// Initialize car position
+car.style.transform = `translate(${carX}px, ${carY}px)`;
+
 showDebugCheckbox.addEventListener('change', () => {
   debugCanvas.style.display = showDebugCheckbox.checked ? 'block' : 'none';
 });
@@ -163,6 +166,7 @@ function loadNewMap() {
     carY = canvas.height / 2;
     targetX = carX;
     targetY = carY;
+    car.style.transform = `translate(${carX}px, ${carY}px)`;
     updateViewport();
   };
 }
@@ -177,6 +181,9 @@ function updateViewport() {
   
   viewport.style.transform = `translate(${translateX}px, ${translateY}px) scale(${ZOOM_LEVEL})`;
 }
+
+// Set initial viewport position
+updateViewport();
 
 newMapButton.addEventListener('click', loadNewMap);
 
