@@ -198,12 +198,22 @@ showDebugCheckbox.addEventListener('change', () => {
 debugCanvas.style.display = 'none';
 
 function loadNewMap() {
-  const timestamp = new Date().getTime(); 
+  const timestamp = new Date().getTime();
+  const imgId = `map_${timestamp}`;
+  
+  // Clear the previous image if it exists
+  const existingImg = canvas.querySelector('img');
+  if (existingImg) {
+    existingImg.remove();
+  }
+  
   const img = new Image();
   img.crossOrigin = "Anonymous";
+  img.id = imgId;
   img.src = `https://image.pollinations.ai/prompt/A%20colorful%20children%27s%20play%20carpet%20with%20roads,%20buildings,%20and%20trees,%20birds-eye%20view,%20vintage%20style,%20warm%20colors,%20educational%20toy,%20white%20road%20lines,%20dashed%20center%20lines?${timestamp}`;
   
   img.onload = function() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     detectRoads();
     
@@ -213,6 +223,19 @@ function loadNewMap() {
     mouseY = carY;
     score = 0;
     scoreElement.textContent = `Score: ${score}`;
+    
+    // Clear existing coins
+    coins.forEach(coin => coin.remove());
+    coins = [];
+    
+    // Generate new coins
+    for(let i = 0; i < 20; i++) {
+      if(roadPoints.length > 0) {
+        const randomIndex = Math.floor(Math.random() * roadPoints.length);
+        const point = roadPoints[randomIndex];
+        createCoin(point.x, point.y);
+      }
+    }
     
     updateViewport();
   };
@@ -280,17 +303,6 @@ function detectRoads() {
       }
     }
   }
-  
-  coins.forEach(coin => coin.remove());
-  coins = [];
-  
-  for(let i = 0; i < 20; i++) {
-    if(roadPoints.length > 0) {
-      const randomIndex = Math.floor(Math.random() * roadPoints.length);
-      const point = roadPoints[randomIndex];
-      createCoin(point.x, point.y);
-    }
-  }
 }
 
 function createCoin(x, y) {
@@ -334,10 +346,12 @@ function updateGame() {
   const angle = Math.atan2(dy, dx) * 180 / Math.PI;
   car.style.transform = `translate(-50%, -50%) rotate(${angle + 90}deg)`;
   
-  coins.forEach((coin, index) => {
+  // Check coin collisions
+  for(let i = coins.length - 1; i >= 0; i--) {
+    const coin = coins[i];
     if(checkCollision(carX, carY, coin)) {
       coin.remove();
-      coins.splice(index, 1);
+      coins.splice(i, 1);
       score += 10;
       scoreElement.textContent = `Score: ${score}`;
       
@@ -347,7 +361,7 @@ function updateGame() {
         createCoin(point.x, point.y);
       }
     }
-  });
+  }
   
   requestAnimationFrame(updateGame);
 }
