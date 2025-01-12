@@ -66,12 +66,18 @@
     border-radius: 50%;
     animation: coinSpin 1s infinite linear;
     pointer-events: none;
+    transition: all 0.3s ease-out;
   }
 
   @keyframes coinSpin {
-    0% { transform: scale(1); }
-    50% { transform: scale(0.8); }
-    100% { transform: scale(1); }
+    0% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(0.8) rotate(180deg); }
+    100% { transform: scale(1) rotate(360deg); }
+  }
+
+  .coin.collected {
+    transform: scale(2) rotate(720deg);
+    opacity: 0;
   }
 
   #score {
@@ -98,6 +104,23 @@
     display: flex;
     gap: 10px;
     align-items: center;
+  }
+
+  .score-popup {
+    position: absolute;
+    color: gold;
+    font-size: 20px;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    pointer-events: none;
+    z-index: 2001;
+    text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
+    animation: scorePopup 1s ease-out forwards;
+  }
+
+  @keyframes scorePopup {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
   }
 </style>
 </head>
@@ -154,19 +177,15 @@ function handlePointerMove(e) {
   const rect = carpet.getBoundingClientRect();
   const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
   
-  // Get pointer coordinates whether mouse or touch
   const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
   const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
   
-  // Get relative position within carpet element
   const screenX = clientX - rect.left;
   const screenY = clientY - rect.top;
   
-  // Transform screen coordinates to canvas coordinates accounting for zoom
   const inverse = viewportTransform.inverse();
   const point = new DOMPoint(screenX, screenY).matrixTransform(inverse);
   
-  // Update target coordinates
   mouseX = point.x;
   mouseY = point.y;
 }
@@ -284,6 +303,17 @@ function createCoin(x, y) {
   coins.push(coin);
 }
 
+function createScorePopup(x, y) {
+  const popup = document.createElement('div');
+  popup.className = 'score-popup';
+  popup.textContent = '+10';
+  popup.style.left = x + 'px';
+  popup.style.top = y + 'px';
+  viewport.appendChild(popup);
+  
+  popup.addEventListener('animationend', () => popup.remove());
+}
+
 function checkCollision(carX, carY, coinElement) {
   const coinX = parseFloat(coinElement.style.left);
   const coinY = parseFloat(coinElement.style.top);
@@ -293,7 +323,26 @@ function checkCollision(carX, carY, coinElement) {
     Math.pow(carY - coinY, 2)
   );
   
-  return distance < 50; 
+  return distance < 40; 
+}
+
+function collectCoin(coin, index) {
+  coin.classList.add('collected');
+  createScorePopup(parseFloat(coin.style.left), parseFloat(coin.style.top));
+  
+  setTimeout(() => {
+    coin.remove();
+    coins.splice(index, 1);
+    
+    if(roadPoints.length > 0) {
+      const randomIndex = Math.floor(Math.random() * roadPoints.length);
+      const point = roadPoints[randomIndex];
+      createCoin(point.x, point.y);
+    }
+  }, 300);
+  
+  score += 10;
+  scoreElement.textContent = `Score: ${score}`;
 }
 
 function updateGame() {
@@ -317,17 +366,8 @@ function updateGame() {
   car.style.transform = `translate(-50%, -50%) rotate(${angle + 90}deg)`;
   
   coins.forEach((coin, index) => {
-    if(checkCollision(carX, carY, coin)) {
-      coin.remove();
-      coins.splice(index, 1);
-      score += 10;
-      scoreElement.textContent = `Score: ${score}`;
-      
-      if(roadPoints.length > 0) {
-        const randomIndex = Math.floor(Math.random() * roadPoints.length);
-        const point = roadPoints[randomIndex];
-        createCoin(point.x, point.y);
-      }
+    if(checkCollision(carX, carY, coin) && !coin.classList.contains('collected')) {
+      collectCoin(coin, index);
     }
   });
   
@@ -341,5 +381,4 @@ loadNewMap();
 updateGame();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
-</body>
-</html>
+</body></html>
