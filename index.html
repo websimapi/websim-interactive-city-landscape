@@ -51,7 +51,6 @@
     width: 60px;
     height: 60px;
     transform-origin: center;
-    transition: transform 0.1s;
     z-index: 1000;
     pointer-events: none;
   }
@@ -112,7 +111,7 @@
   <div class="viewport">
     <canvas id="canvas" width="2000" height="1500"></canvas>
     <canvas id="debugCanvas" width="2000" height="1500"></canvas>
-    <svg id="car" class="car" viewBox="0 0 100 100" style="position: absolute;">
+    <svg id="car" class="car" viewBox="0 0 100 100">
       <path d="M20,65 Q50,75 80,65 L90,45 Q50,35 10,45 L20,65" 
             fill="#FF4444" stroke="#000" stroke-width="2"/>
       <path d="M15,45 Q50,35 85,45 L80,30 Q50,20 20,30 L15,45" 
@@ -142,29 +141,43 @@ let coins = [];
 let score = 0;
 let carX = canvas.width / 2;
 let carY = canvas.height / 2;
-let targetX = carX;
-let targetY = carY;
+let mouseX = carX;
+let mouseY = carY;
 let scoreElement = document.getElementById('score');
 const ZOOM_LEVEL = 2;
-
-car.style.transform = `translate(${carX}px, ${carY}px)`;
-car.style.display = 'block';
 
 function handlePointerMove(e) {
   e.preventDefault();
   const rect = carpet.getBoundingClientRect();
+  const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
+  
   const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
   const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
   
   const screenX = clientX - rect.left;
   const screenY = clientY - rect.top;
   
-  const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
   const inverse = viewportTransform.inverse();
   const point = new DOMPoint(screenX, screenY).matrixTransform(inverse);
   
-  targetX = point.x;
-  targetY = point.y;
+  mouseX = point.x;
+  mouseY = point.y;
+  
+  // Update car position directly
+  carX = mouseX;
+  carY = mouseY;
+  
+  // Keep car within bounds
+  carX = Math.max(30, Math.min(carX, canvas.width - 30));
+  carY = Math.max(30, Math.min(carY, canvas.height - 30));
+  
+  // Calculate angle based on movement direction
+  const angle = Math.atan2(e.movementY, e.movementX) * 180 / Math.PI;
+  
+  // Update car position and rotation
+  car.style.transform = `translate(${carX}px, ${carY}px) rotate(${angle + 90}deg)`;
+  
+  updateViewport();
 }
 
 carpet.addEventListener('mousemove', handlePointerMove);
@@ -189,8 +202,8 @@ function loadNewMap() {
     
     carX = canvas.width / 2;
     carY = canvas.height / 2;
-    targetX = carX;
-    targetY = carY;
+    mouseX = carX;
+    mouseY = carY;
     
     updateViewport();
     car.style.transform = `translate(${carX}px, ${carY}px)`;
@@ -298,26 +311,7 @@ function checkCollision(carX, carY, coinElement) {
   return distance < 60;
 }
 
-function updateCar() {
-  const dx = targetX - carX;
-  const dy = targetY - carY;
-  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  
-  const speed = Math.min(distance * 0.1, 5);
-  
-  if(distance > 1) {
-    carX += Math.cos(angle * Math.PI / 180) * speed;
-    carY += Math.sin(angle * Math.PI / 180) * speed;
-  }
-  
-  carX = Math.max(30, Math.min(carX, canvas.width - 30));
-  carY = Math.max(30, Math.min(carY, canvas.height - 30));
-  
-  car.style.transform = `translate(${carX}px, ${carY}px) rotate(${angle + 90}deg)`;
-  
-  updateViewport();
-  
+function updateGame() {
   coins.forEach((coin, index) => {
     if(checkCollision(carX, carY, coin)) {
       coin.remove();
@@ -332,18 +326,15 @@ function updateCar() {
       }
     }
   });
-}
-
-function gameLoop() {
-  updateCar();
-  requestAnimationFrame(gameLoop);
+  
+  requestAnimationFrame(updateGame);
 }
 
 newMapButton.addEventListener('click', loadNewMap);
 redetectButton.addEventListener('click', detectRoads);
 
 loadNewMap();
-gameLoop();
+updateGame();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body></html>
