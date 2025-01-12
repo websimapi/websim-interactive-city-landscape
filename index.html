@@ -12,18 +12,35 @@
     touch-action: none;
   }
 
-  .game-container {
+  .carpet {
     width: 100vw;
     height: 100vh;
     position: relative;
     overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    border: none;
     touch-action: none;
   }
 
-  canvas {
+  .viewport {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transform-origin: center;
+  }
+
+  #canvas, #debugCanvas {
     position: absolute;
     top: 0;
     left: 0;
+    width: 2000px;
+    height: 1500px;
+  }
+
+  #debugCanvas {
+    pointer-events: none;
+    opacity: 0.5;
   }
 
   .ui-container {
@@ -69,9 +86,11 @@
 </style>
 </head>
 <body>
-<div class="game-container">
-  <canvas id="gameCanvas"></canvas>
-  <canvas id="debugCanvas"></canvas>
+<div class="carpet">
+  <div class="viewport">
+    <canvas id="canvas" width="2000" height="1500"></canvas>
+    <canvas id="debugCanvas" width="2000" height="1500"></canvas>
+  </div>
 </div>
 
 <div class="ui-container">
@@ -88,252 +107,294 @@
 </div>
 
 <script>
-class Game {
+class GameObject {
   constructor() {
-    this.container = document.querySelector('.game-container');
-    this.gameCanvas = document.getElementById('gameCanvas');
-    this.debugCanvas = document.getElementById('debugCanvas');
-    this.ctx = this.gameCanvas.getContext('2d');
-    this.debugCtx = this.debugCanvas.getContext('2d');
-    
-    this.width = 2000;
-    this.height = 1500;
-    this.screenWidth = window.innerWidth;
-    this.screenHeight = window.innerHeight;
-    this.scale = 2;
-    
-    this.gameCanvas.width = this.width;
-    this.gameCanvas.height = this.height;
-    this.debugCanvas.width = this.width;
-    this.debugCanvas.height = this.height;
-    
-    this.car = {
-      x: this.width / 2,
-      y: this.height / 2,
-      angle: 0,
-      width: 60,
-      height: 60
-    };
-    
-    this.camera = {
-      x: 0,
-      y: 0
-    };
-    
-    this.target = {
-      x: this.car.x,
-      y: this.car.y
-    };
-    
-    this.roadPoints = [];
-    this.coins = [];
-    this.score = 0;
-    
-    this.setupEventListeners();
-    this.loadNewMap();
-    this.gameLoop();
+    this.x = 0;
+    this.y = 0;
+    this.element = null;
+    this.width = 0;
+    this.height = 0;
   }
-  
-  setupEventListeners() {
-    this.container.addEventListener('mousemove', this.handlePointer.bind(this));
-    this.container.addEventListener('touchmove', this.handlePointer.bind(this));
-    this.container.addEventListener('touchstart', this.handlePointer.bind(this));
-    
-    document.getElementById('showDebug').addEventListener('change', (e) => {
-      this.debugCanvas.style.display = e.target.checked ? 'block' : 'none';
-    });
-    
-    document.getElementById('redetectRoads').addEventListener('click', () => this.detectRoads());
-    document.getElementById('newMap').addEventListener('click', () => this.loadNewMap());
-    
-    this.debugCanvas.style.display = 'none';
+
+  createDOMElement(tag, className) {
+    this.element = document.createElement(tag);
+    this.element.className = className;
+    return this.element;
   }
-  
-  handlePointer(e) {
-    e.preventDefault();
-    const rect = this.container.getBoundingClientRect();
-    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-    
-    // Convert screen coordinates to world coordinates
-    this.target.x = (clientX - this.screenWidth/2)/this.scale + this.car.x;
-    this.target.y = (clientY - this.screenHeight/2)/this.scale + this.car.y;
-  }
-  
-  loadNewMap() {
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-    img.src = `https://image.pollinations.ai/prompt/A%20colorful%20children%27s%20play%20carpet%20with%20roads,%20buildings,%20and%20trees,%20birds-eye%20view,%20vintage%20style,%20warm%20colors,%20educational%20toy,%20white%20road%20lines,%20dashed%20center%20lines?${Date.now()}`;
-    
-    img.onload = () => {
-      this.ctx.drawImage(img, 0, 0, this.width, this.height);
-      this.detectRoads();
-      this.resetGame();
-    };
-  }
-  
-  resetGame() {
-    this.car.x = this.width / 2;
-    this.car.y = this.height / 2;
-    this.target.x = this.car.x;
-    this.target.y = this.car.y;
-    this.score = 0;
-    document.getElementById('score').textContent = `Score: ${this.score}`;
-    this.spawnCoins();
-  }
-  
-  detectRoads() {
-    this.roadPoints = [];
-    this.debugCtx.clearRect(0, 0, this.width, this.height);
-    
-    const imageData = this.ctx.getImageData(0, 0, this.width, this.height);
-    const data = imageData.data;
-    
-    for(let y = 0; y < this.height; y += 3) {
-      for(let x = 0; x < this.width; x += 3) {
-        const index = (y * this.width + x) * 4;
-        if(this.isWhitePixel(data[index], data[index + 1], data[index + 2])) {
-          if(this.checkRoadPattern(x, y, data)) {
-            this.roadPoints.push({x, y});
-            this.debugCtx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-            this.debugCtx.fillRect(x - 1, y - 1, 3, 3);
-          }
-        }
-      }
-    }
-    
-    this.spawnCoins();
-  }
-  
-  isWhitePixel(r, g, b) {
-    const threshold = 200;
-    return r > threshold && g > threshold && b > threshold;
-  }
-  
-  checkRoadPattern(x, y, data) {
-    for(let radius = 10; radius < 40; radius += 5) {
-      let whitePixelsFound = 0;
-      for(let angle = 0; angle < 360; angle += 45) {
-        const radians = angle * Math.PI / 180;
-        const checkX = x + Math.cos(radians) * radius;
-        const checkY = y + Math.sin(radians) * radius;
-        
-        if(checkX >= 0 && checkX < this.width && checkY >= 0 && checkY < this.height) {
-          const index = (Math.floor(checkY) * this.width + Math.floor(checkX)) * 4;
-          if(this.isWhitePixel(data[index], data[index + 1], data[index + 2])) {
-            whitePixelsFound++;
-          }
-        }
-      }
-      if(whitePixelsFound >= 2) return true;
-    }
-    return false;
-  }
-  
-  spawnCoins() {
-    this.coins = [];
-    for(let i = 0; i < 20; i++) {
-      if(this.roadPoints.length > 0) {
-        const point = this.roadPoints[Math.floor(Math.random() * this.roadPoints.length)];
-        this.coins.push({x: point.x, y: point.y, collected: false});
-      }
+
+  setPosition(x, y) {
+    this.x = x;
+    this.y = y;
+    if (this.element) {
+      this.element.style.transform = `translate(${x}px, ${y}px)`;
     }
   }
-  
-  update() {
-    const dx = this.target.x - this.car.x;
-    const dy = this.target.y - this.car.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    const speed = 5;
-    if (distance > speed) {
-      this.car.x += (dx / distance) * speed;
-      this.car.y += (dy / distance) * speed;
-      this.car.angle = Math.atan2(dy, dx) + Math.PI/2;
+
+  remove() {
+    if (this.element && this.element.parentNode) {
+      this.element.parentNode.removeChild(this.element);
     }
-    
-    this.coins.forEach((coin, index) => {
-      if(!coin.collected && this.checkCoinCollision(coin)) {
-        coin.collected = true;
-        this.score += 10;
-        document.getElementById('score').textContent = `Score: ${this.score}`;
-        
-        if(this.roadPoints.length > 0) {
-          const point = this.roadPoints[Math.floor(Math.random() * this.roadPoints.length)];
-          this.coins[index] = {x: point.x, y: point.y, collected: false};
-        }
-      }
-    });
-  }
-  
-  checkCoinCollision(coin) {
-    const distance = Math.sqrt(
-      Math.pow(this.car.x - coin.x, 2) + 
-      Math.pow(this.car.y - coin.y, 2)
-    );
-    return distance < 40;
-  }
-  
-  render() {
-    // Clear canvas and draw game state
-    this.ctx.save();
-    this.ctx.setTransform(1,0,0,1,0,0);
-    
-    // Calculate camera position
-    this.camera.x = this.screenWidth/2 - this.car.x * this.scale;
-    this.camera.y = this.screenHeight/2 - this.car.y * this.scale;
-    
-    // Apply camera transform
-    this.ctx.translate(this.camera.x, this.camera.y);
-    this.ctx.scale(this.scale, this.scale);
-    
-    // Draw background
-    this.ctx.drawImage(this.gameCanvas, 0, 0);
-    
-    // Draw coins
-    this.coins.forEach(coin => {
-      if(!coin.collected) {
-        this.ctx.beginPath();
-        this.ctx.arc(coin.x, coin.y, 15, 0, Math.PI * 2);
-        this.ctx.fillStyle = 'gold';
-        this.ctx.fill();
-        this.ctx.strokeStyle = 'darkgoldenrod';
-        this.ctx.lineWidth = 2;
-        this.ctx.stroke();
-      }
-    });
-    
-    // Draw car
-    this.ctx.save();
-    this.ctx.translate(this.car.x, this.car.y);
-    this.ctx.rotate(this.car.angle);
-    this.drawCar();
-    this.ctx.restore();
-    
-    this.ctx.restore();
-  }
-  
-  drawCar() {
-    this.ctx.beginPath();
-    this.ctx.moveTo(-30, -30);
-    this.ctx.lineTo(30, -30);
-    this.ctx.lineTo(30, 30);
-    this.ctx.lineTo(-30, 30);
-    this.ctx.closePath();
-    this.ctx.fillStyle = 'red';
-    this.ctx.fill();
-    this.ctx.strokeStyle = 'black';
-    this.ctx.stroke();
-  }
-  
-  gameLoop() {
-    this.update();
-    this.render();
-    requestAnimationFrame(() => this.gameLoop());
   }
 }
 
-const game = new Game();
+class Car extends GameObject {
+  constructor() {
+    super();
+    this.element = this.createCarSVG();
+    this.width = 60;
+    this.height = 60;
+    this.angle = 0;
+  }
+
+  createCarSVG() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.style.position = "absolute";
+    svg.style.width = "60px";
+    svg.style.height = "60px";
+    svg.style.zIndex = "1000";
+    svg.style.pointerEvents = "none";
+    svg.innerHTML = `
+      <path d="M20,65 Q50,75 80,65 L90,45 Q50,35 10,45 L20,65" 
+            fill="#FF4444" stroke="#000" stroke-width="2"/>
+      <path d="M15,45 Q50,35 85,45 L80,30 Q50,20 20,30 L15,45" 
+            fill="#FF6666" stroke="#000" stroke-width="2"/>
+      <circle cx="30" cy="65" r="8" fill="#333"/>
+      <circle cx="70" cy="65" r="8" fill="#333"/>
+      <rect x="35" y="35" width="30" height="15" fill="#88CCFF" rx="2"/>
+      <line x1="50" y1="35" x2="50" y2="50" stroke="#333" stroke-width="2"/>
+    `;
+    document.querySelector('.viewport').appendChild(svg);
+    return svg;
+  }
+
+  setRotation(angle) {
+    this.angle = angle;
+    this.element.style.transform = `translate(${this.x}px, ${this.y}px) rotate(${angle}deg)`;
+  }
+}
+
+class Coin extends GameObject {
+  constructor(x, y) {
+    super();
+    this.element = this.createDOMElement('div', 'coin');
+    this.element.style.position = 'absolute';
+    this.element.style.width = '30px';
+    this.element.style.height = '30px';
+    this.element.style.backgroundColor = 'gold';
+    this.element.style.borderRadius = '50%';
+    this.element.style.boxShadow = '0 0 10px rgba(255,215,0,0.5)';
+    this.element.style.pointerEvents = 'none';
+    this.startAnimation();
+    document.querySelector('.viewport').appendChild(this.element);
+    this.setPosition(x, y);
+  }
+
+  startAnimation() {
+    let scale = 1;
+    const animate = () => {
+      scale = scale === 1 ? 0.8 : 1;
+      this.element.style.transform = `translate(${this.x}px, ${this.y}px) scale(${scale})`;
+      setTimeout(animate, 500);
+    };
+    animate();
+  }
+}
+
+const carpet = document.querySelector('.carpet');
+const viewport = document.querySelector('.viewport');
+const canvas = document.getElementById('canvas');
+const debugCanvas = document.getElementById('debugCanvas');
+const ctx = canvas.getContext('2d');
+const debugCtx = debugCanvas.getContext('2d');
+const showDebugCheckbox = document.getElementById('showDebug');
+const redetectButton = document.getElementById('redetectRoads');
+const newMapButton = document.getElementById('newMap');
+
+let roadPoints = [];
+let coins = [];
+let score = 0;
+let mouseX = canvas.width / 2;
+let mouseY = canvas.height / 2;
+let scoreElement = document.getElementById('score');
+const ZOOM_LEVEL = 2;
+const COIN_COLLECT_DISTANCE = 40;
+
+const car = new Car();
+car.setPosition(canvas.width / 2, canvas.height / 2);
+
+function handlePointerMove(e) {
+  e.preventDefault();
+  const rect = carpet.getBoundingClientRect();
+  const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
+  
+  const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+  const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+  
+  const screenX = clientX - rect.left;
+  const screenY = clientY - rect.top;
+  
+  const inverse = viewportTransform.inverse();
+  const point = new DOMPoint(screenX, screenY).matrixTransform(inverse);
+  
+  mouseX = point.x;
+  mouseY = point.y;
+}
+
+carpet.addEventListener('mousemove', handlePointerMove);
+carpet.addEventListener('touchmove', handlePointerMove);
+carpet.addEventListener('touchstart', handlePointerMove);
+
+showDebugCheckbox.addEventListener('change', () => {
+  debugCanvas.style.display = showDebugCheckbox.checked ? 'block' : 'none';
+});
+
+debugCanvas.style.display = 'none';
+
+function loadNewMap() {
+  const timestamp = new Date().getTime(); 
+  const img = new Image();
+  img.crossOrigin = "Anonymous";
+  img.src = `https://image.pollinations.ai/prompt/A%20colorful%20children%27s%20play%20carpet%20with%20roads,%20buildings,%20and%20trees,%20birds-eye%20view,%20vintage%20style,%20warm%20colors,%20educational%20toy,%20white%20road%20lines,%20dashed%20center%20lines?${timestamp}`;
+  
+  img.onload = function() {
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    detectRoads();
+    car.setPosition(canvas.width / 2, canvas.height / 2);
+    mouseX = car.x;
+    mouseY = car.y;
+    score = 0;
+    scoreElement.textContent = `Score: ${score}`;
+    updateViewport();
+  };
+}
+
+function updateViewport() {
+  const screenCenterX = window.innerWidth / 2;
+  const screenCenterY = window.innerHeight / 2;
+  
+  const translateX = screenCenterX - car.x * ZOOM_LEVEL;
+  const translateY = screenCenterY - car.y * ZOOM_LEVEL;
+  
+  viewport.style.transform = `translate(${translateX}px, ${translateY}px) scale(${ZOOM_LEVEL})`;
+}
+
+function isWhitePixel(r, g, b) {
+  const threshold = 200;
+  return r > threshold && g > threshold && b > threshold;
+}
+
+function detectRoads() {
+  roadPoints = [];
+  debugCtx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
+  
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  debugCtx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+  
+  for(let y = 0; y < canvas.height; y += 3) {
+    for(let x = 0; x < canvas.width; x += 3) {
+      const index = (y * canvas.width + x) * 4;
+      const r = data[index];
+      const g = data[index + 1];
+      const b = data[index + 2];
+      
+      if(isWhitePixel(r, g, b)) {
+        let roadFound = false;
+        for(let radius = 10; radius < 40; radius += 5) {
+          let whitePixelsFound = 0;
+          
+          for(let angle = 0; angle < 360; angle += 45) {
+            const radians = angle * Math.PI / 180;
+            const checkX = x + Math.cos(radians) * radius;
+            const checkY = y + Math.sin(radians) * radius;
+            
+            if(checkX >= 0 && checkX < canvas.width && checkY >= 0 && checkY < canvas.height) {
+              const checkIndex = (Math.floor(checkY) * canvas.width + Math.floor(checkX)) * 4;
+              if(isWhitePixel(data[checkIndex], data[checkIndex + 1], data[checkIndex + 2])) {
+                whitePixelsFound++;
+              }
+            }
+          }
+          
+          if(whitePixelsFound >= 2) {
+            roadFound = true;
+            break;
+          }
+        }
+        
+        if(roadFound) {
+          roadPoints.push({x, y});
+          debugCtx.fillRect(x - 1, y - 1, 3, 3);
+        }
+      }
+    }
+  }
+  
+  coins.forEach(coin => coin.remove());
+  coins = [];
+  
+  for(let i = 0; i < 20; i++) {
+    if(roadPoints.length > 0) {
+      const randomIndex = Math.floor(Math.random() * roadPoints.length);
+      const point = roadPoints[randomIndex];
+      coins.push(new Coin(point.x, point.y));
+    }
+  }
+}
+
+function checkCollisions() {
+  coins.forEach((coin, index) => {
+    const dx = car.x - coin.x;
+    const dy = car.y - coin.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if(distance < COIN_COLLECT_DISTANCE) {
+      coin.remove();
+      coins.splice(index, 1);
+      score += 10;
+      scoreElement.textContent = `Score: ${score}`;
+      
+      if(roadPoints.length > 0) {
+        const randomIndex = Math.floor(Math.random() * roadPoints.length);
+        const point = roadPoints[randomIndex];
+        coins.push(new Coin(point.x, point.y));
+      }
+    }
+  });
+}
+
+function updateGame() {
+  const dx = mouseX - car.x;
+  const dy = mouseY - car.y;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  const speed = 5;
+  
+  if (distance > speed) {
+    car.x += dx / distance * speed;
+    car.y += dy / distance * speed;
+  } else {
+    car.x = mouseX;
+    car.y = mouseY;
+  }
+  
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  car.setPosition(car.x, car.y);
+  car.setRotation(angle + 90);
+  
+  updateViewport();
+  checkCollisions();
+  
+  requestAnimationFrame(updateGame);
+}
+
+newMapButton.addEventListener('click', loadNewMap);
+redetectButton.addEventListener('click', detectRoads);
+
+loadNewMap();
+updateGame();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
