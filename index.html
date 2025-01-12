@@ -151,28 +151,30 @@ function handlePointerMove(e) {
   const rect = carpet.getBoundingClientRect();
   const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
   
+  // Get pointer coordinates whether mouse or touch
   const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
   const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
   
+  // Get relative position within carpet element
   const screenX = clientX - rect.left;
   const screenY = clientY - rect.top;
   
+  // Transform screen coordinates to canvas coordinates accounting for zoom
   const inverse = viewportTransform.inverse();
   const point = new DOMPoint(screenX, screenY).matrixTransform(inverse);
   
+  // Update target coordinates
   mouseX = point.x;
   mouseY = point.y;
   
-  // Update car position directly
-  carX = mouseX;
-  carY = mouseY;
+  // Update car position with bounds checking
+  carX = Math.max(30, Math.min(mouseX, canvas.width - 30));
+  carY = Math.max(30, Math.min(mouseY, canvas.height - 30));
   
-  // Keep car within bounds
-  carX = Math.max(30, Math.min(carX, canvas.width - 30));
-  carY = Math.max(30, Math.min(carY, canvas.height - 30));
-  
-  // Calculate angle based on movement direction
-  const angle = Math.atan2(e.movementY, e.movementX) * 180 / Math.PI;
+  // Calculate movement angle
+  const dx = e.movementX || 0;
+  const dy = e.movementY || 0;
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
   
   // Update car position and rotation
   car.style.transform = `translate(${carX}px, ${carY}px) rotate(${angle + 90}deg)`;
