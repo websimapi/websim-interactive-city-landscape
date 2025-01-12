@@ -11,6 +11,7 @@
     flex-direction: column;
     gap: 20px;
     overflow: hidden;
+    touch-action: none;
   }
 
   .carpet {
@@ -21,6 +22,7 @@
     background-size: cover;
     background-position: center;
     border: none;
+    touch-action: none;
   }
 
   .viewport {
@@ -51,7 +53,7 @@
     transform-origin: center;
     transition: transform 0.1s;
     z-index: 1000;
-    pointer-events: none;  /* Added to prevent car from blocking clicks */
+    pointer-events: none;
   }
 
   .coin {
@@ -61,7 +63,7 @@
     background: gold;
     border-radius: 50%;
     animation: coinSpin 1s infinite linear;
-    pointer-events: none;  /* Added to prevent coins from blocking clicks */
+    pointer-events: none;
   }
 
   @keyframes coinSpin {
@@ -145,9 +147,29 @@ let targetY = carY;
 let scoreElement = document.getElementById('score');
 const ZOOM_LEVEL = 2;
 
-// Initialize car position immediately
 car.style.transform = `translate(${carX}px, ${carY}px)`;
-car.style.display = 'block';  // Ensure car is visible
+car.style.display = 'block';
+
+function handlePointerMove(e) {
+  e.preventDefault();
+  const rect = carpet.getBoundingClientRect();
+  const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+  const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+  
+  const screenX = clientX - rect.left;
+  const screenY = clientY - rect.top;
+  
+  const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
+  const inverse = viewportTransform.inverse();
+  const point = new DOMPoint(screenX, screenY).matrixTransform(inverse);
+  
+  targetX = point.x;
+  targetY = point.y;
+}
+
+carpet.addEventListener('mousemove', handlePointerMove);
+carpet.addEventListener('touchmove', handlePointerMove);
+carpet.addEventListener('touchstart', handlePointerMove);
 
 showDebugCheckbox.addEventListener('change', () => {
   debugCanvas.style.display = showDebugCheckbox.checked ? 'block' : 'none';
@@ -165,16 +187,12 @@ function loadNewMap() {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     detectRoads();
     
-    // Initialize car position to center of canvas
     carX = canvas.width / 2;
     carY = canvas.height / 2;
     targetX = carX;
     targetY = carY;
     
-    // Update viewport to center on car
     updateViewport();
-    
-    // Update car position
     car.style.transform = `translate(${carX}px, ${carY}px)`;
   };
 }
@@ -183,14 +201,11 @@ function updateViewport() {
   const screenCenterX = window.innerWidth / 2;
   const screenCenterY = window.innerHeight / 2;
   
-  // Calculate translation to keep car centered
   const translateX = screenCenterX - carX * ZOOM_LEVEL;
   const translateY = screenCenterY - carY * ZOOM_LEVEL;
   
   viewport.style.transform = `translate(${translateX}px, ${translateY}px) scale(${ZOOM_LEVEL})`;
 }
-
-newMapButton.addEventListener('click', loadNewMap);
 
 function isWhitePixel(r, g, b) {
   const threshold = 200;
@@ -257,8 +272,6 @@ function detectRoads() {
   }
 }
 
-redetectButton.addEventListener('click', detectRoads);
-
 function createCoin(x, y) {
   const coin = document.createElement('div');
   coin.className = 'coin';
@@ -267,19 +280,6 @@ function createCoin(x, y) {
   viewport.appendChild(coin);
   coins.push(coin);
 }
-
-carpet.addEventListener('mousemove', (e) => {
-  const rect = carpet.getBoundingClientRect();
-  const screenX = e.clientX - rect.left;
-  const screenY = e.clientY - rect.top;
-  
-  const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
-  const inverse = viewportTransform.inverse();
-  const point = new DOMPoint(screenX, screenY).matrixTransform(inverse);
-  
-  targetX = point.x;
-  targetY = point.y;
-});
 
 function checkCollision(carX, carY, coinElement) {
   const coinRect = coinElement.getBoundingClientRect();
@@ -338,6 +338,9 @@ function gameLoop() {
   updateCar();
   requestAnimationFrame(gameLoop);
 }
+
+newMapButton.addEventListener('click', loadNewMap);
+redetectButton.addEventListener('click', detectRoads);
 
 loadNewMap();
 gameLoop();
