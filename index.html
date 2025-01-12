@@ -1,363 +1,247 @@
 <html><head><base href="https://mydomain.com">
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        background: #f0f0f0;
-        overflow: hidden;
-        touch-action: none;
-      }
-    
-      .carpet {
-        width: 100vw;
-        height: 100vh;
-        position: relative;
-        overflow: hidden;
-        background-size: cover;
-        background-position: center;
-        border: none;
-        touch-action: none;
-      }
-    
-      .viewport {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        transform-origin: center;
-        transition: transform 0.1s ease-out;
-      }
-    
-      #canvas, #debugCanvas {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 2000px;
-        height: 1500px;
-      }
-    
-      #debugCanvas {
-        pointer-events: none;
-        opacity: 0.5;
-      }
-    
-      .car {
-        position: fixed;
-        width: 60px;
-        height: 60px;
-        transform-origin: center;
-        z-index: 1000;
-        pointer-events: none;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%) rotate(0deg);
-      }
-    
-      .coin {
-        position: absolute;
-        width: 30px;
-        height: 30px;
-        background: gold;
-        border-radius: 50%;
-        animation: coinSpin 1s infinite linear;
-        pointer-events: none;
-        box-shadow: 0 0 10px rgba(255,215,0,0.5);
-      }
-    
-      @keyframes coinSpin {
-        0% { transform: scale(1); }
-        50% { transform: scale(0.8); }
-        100% { transform: scale(1); }
-      }
-    
-      .ui-container {
-        position: fixed;
-        bottom: 20px;
-        left: 0;
-        right: 0;
-        display: flex;
-        justify-content: space-between;
-        padding: 0 20px;
-        z-index: 2000;
-      }
-    
-      .ui-panel {
-        background: rgba(255, 255, 255, 0.9);
-        padding: 10px 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        display: flex;
-        gap: 10px;
-        align-items: center;
-      }
-    
-      button {
-        padding: 8px 16px;
-        border: none;
-        border-radius: 5px;
-        background: #4CAF50;
-        color: white;
-        cursor: pointer;
-        transition: background 0.3s;
-      }
-    
-      button:hover {
-        background: #45a049;
-      }
-    
-      #score {
-        font-size: 24px;
-        font-family: Arial, sans-serif;
-        color: #333;
-      }
-    </style>
-    </head>
-    <body>
-    <div class="carpet">
-      <div class="viewport">
-        <canvas id="canvas" width="2000" height="1500"></canvas>
-        <canvas id="debugCanvas" width="2000" height="1500"></canvas>
-      </div>
-    </div>
-    <svg id="car" class="car" viewBox="0 0 100 100">
-      <path d="M20,65 Q50,75 80,65 L90,45 Q50,35 10,45 L20,65" 
-            fill="#FF4444" stroke="#000" stroke-width="2"/>
-      <path d="M15,45 Q50,35 85,45 L80,30 Q50,20 20,30 L15,45" 
-            fill="#FF6666" stroke="#000" stroke-width="2"/>
-      <circle cx="30" cy="65" r="8" fill="#333"/>
-      <circle cx="70" cy="65" r="8" fill="#333"/>
-      <rect x="35" y="35" width="30" height="15" fill="#88CCFF" rx="2"/>
-      <line x1="50" y1="35" x2="50" y2="50" stroke="#333" stroke-width="2"/>
-    </svg>
-    
-    <div class="ui-container">
-      <div class="ui-panel">
-        <label>
-          <input type="checkbox" id="showDebug"> Debug View
-        </label>
-        <button id="redetectRoads">Redetect Roads</button>
-        <button id="newMap">New Map</button>
-      </div>
-      <div class="ui-panel">
-        <div id="score">Score: 0</div>
-      </div>
-    </div>
-    
-    <script>
-    const carpet = document.querySelector('.carpet');
-    const viewport = document.querySelector('.viewport');
-    const canvas = document.getElementById('canvas');
-    const debugCanvas = document.getElementById('debugCanvas');
-    const ctx = canvas.getContext('2d');
-    const debugCtx = debugCanvas.getContext('2d');
-    const car = document.getElementById('car');
-    const showDebugCheckbox = document.getElementById('showDebug');
-    const redetectButton = document.getElementById('redetectRoads');
-    const newMapButton = document.getElementById('newMap');
-    
-    let roadPoints = [];
-    let coins = [];
-    let score = 0;
-    let carX = canvas.width / 2;
-    let carY = canvas.height / 2;
-    let mouseX = carX;
-    let mouseY = carY;
-    const scoreElement = document.getElementById('score');
-    const ZOOM_LEVEL = 2;
-    const COIN_COLLECT_DISTANCE = 40;
-    
-    function handlePointerMove(e) {
-      e.preventDefault();
-      const rect = carpet.getBoundingClientRect();
-      const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
-      
-      const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-      const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-      
-      const screenX = clientX - rect.left;
-      const screenY = clientY - rect.top;
-      
-      const inverse = viewportTransform.inverse();
-      const point = new DOMPoint(screenX, screenY).matrixTransform(inverse);
-      
-      mouseX = point.x;
-      mouseY = point.y;
-    }
-    
-    carpet.addEventListener('mousemove', handlePointerMove);
-    carpet.addEventListener('touchmove', handlePointerMove);
-    carpet.addEventListener('touchstart', handlePointerMove);
-    
-    showDebugCheckbox.addEventListener('change', () => {
-      debugCanvas.style.display = showDebugCheckbox.checked ? 'block' : 'none';
+<style>
+body, html {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background: #f0f0f0;
+  touch-action: none;
+}
+
+.game-container {
+  width: 100vw;
+  height: 100vh;
+}
+
+.ui-container {
+  position: fixed;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 2000;
+}
+
+.ui-panel {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  background: #4CAF50;
+  color: white;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+button:hover {
+  background: #45a049;
+}
+
+#score {
+  font-size: 24px;
+  font-family: Arial, sans-serif;
+  color: #333;
+}
+</style>
+
+<!-- Include Phaser via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+
+<div id="game-container"></div>
+
+<div class="ui-container">
+  <div class="ui-panel">
+    <button id="newMap">New Map</button>
+  </div>
+  <div class="ui-panel">
+    <div id="score">Score: 0</div>
+  </div>
+</div>
+
+<script>
+class PlayScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'PlayScene' });
+  }
+
+  preload() {
+    // Load car sprite
+    this.load.svg('car', 'data:image/svg+xml,' + encodeURIComponent(`
+      <svg viewBox="0 0 100 100">
+        <path d="M20,65 Q50,75 80,65 L90,45 Q50,35 10,45 L20,65" 
+              fill="#FF4444" stroke="#000" stroke-width="2"/>
+        <path d="M15,45 Q50,35 85,45 L80,30 Q50,20 20,30 L15,45" 
+              fill="#FF6666" stroke="#000" stroke-width="2"/>
+        <circle cx="30" cy="65" r="8" fill="#333"/>
+        <circle cx="70" cy="65" r="8" fill="#333"/>
+        <rect x="35" y="35" width="30" height="15" fill="#88CCFF" rx="2"/>
+        <line x1="50" y1="35" x2="50" y2="50" stroke="#333" stroke-width="2"/>
+      </svg>
+    `));
+  }
+
+  create() {
+    this.score = 0;
+    this.coins = [];
+    this.roadPoints = [];
+
+    // Create background
+    this.loadNewMap();
+
+    // Create car sprite
+    this.car = this.add.sprite(this.cameras.main.centerX, this.cameras.main.centerY, 'car');
+    this.car.setScale(0.6);
+
+    // Camera follow car
+    this.cameras.main.startFollow(this.car);
+    this.cameras.main.setZoom(2);
+
+    // Input handling
+    this.input.on('pointermove', (pointer) => {
+      this.targetX = pointer.worldX;
+      this.targetY = pointer.worldY;
     });
-    
-    debugCanvas.style.display = 'none';
-    
-    function loadNewMap() {
-      const timestamp = new Date().getTime(); 
-      const img = new Image();
-      img.crossOrigin = "Anonymous";
-      img.src = `https://image.pollinations.ai/prompt/A%20colorful%20children%27s%20play%20carpet%20with%20roads,%20buildings,%20and%20trees,%20birds-eye%20view,%20vintage%20style,%20warm%20colors,%20educational%20toy,%20white%20road%20lines,%20dashed%20center%20lines?${timestamp}`;
-      
-      img.onload = function() {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        detectRoads();
-        
-        carX = canvas.width / 2;
-        carY = canvas.height / 2;
-        mouseX = carX;
-        mouseY = carY;
-        score = 0;
-        scoreElement.textContent = `Score: ${score}`;
-        
-        updateViewport();
-      };
-    }
-    
-    function updateViewport() {
-      const screenCenterX = window.innerWidth / 2;
-      const screenCenterY = window.innerHeight / 2;
-      
-      const translateX = screenCenterX - carX * ZOOM_LEVEL;
-      const translateY = screenCenterY - carY * ZOOM_LEVEL;
-      
-      viewport.style.transform = `translate(${translateX}px, ${translateY}px) scale(${ZOOM_LEVEL})`;
-    }
-    
-    function isWhitePixel(r, g, b) {
-      const threshold = 200;
-      return r > threshold && g > threshold && b > threshold;
-    }
-    
-    function detectRoads() {
-      roadPoints = [];
-      debugCtx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
-      
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      
-      debugCtx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-      
-      for(let y = 0; y < canvas.height; y += 3) {
-        for(let x = 0; x < canvas.width; x += 3) {
-          const index = (y * canvas.width + x) * 4;
-          const r = data[index];
-          const g = data[index + 1];
-          const b = data[index + 2];
-          
-          if(isWhitePixel(r, g, b)) {
-            let roadFound = false;
-            for(let radius = 10; radius < 40; radius += 5) {
-              let whitePixelsFound = 0;
-              
-              for(let angle = 0; angle < 360; angle += 45) {
-                const radians = angle * Math.PI / 180;
-                const checkX = x + Math.cos(radians) * radius;
-                const checkY = y + Math.sin(radians) * radius;
-                
-                if(checkX >= 0 && checkX < canvas.width && checkY >= 0 && checkY < canvas.height) {
-                  const checkIndex = (Math.floor(checkY) * canvas.width + Math.floor(checkX)) * 4;
-                  if(isWhitePixel(data[checkIndex], data[checkIndex + 1], data[checkIndex + 2])) {
-                    whitePixelsFound++;
-                  }
-                }
-              }
-              
-              if(whitePixelsFound >= 2) {
-                roadFound = true;
-                break;
-              }
-            }
-            
-            if(roadFound) {
-              roadPoints.push({x, y});
-              debugCtx.fillRect(x - 1, y - 1, 3, 3);
-            }
-          }
-        }
-      }
-      
-      coins.forEach(coin => coin.element.remove());
-      coins = [];
-      
-      for(let i = 0; i < 20; i++) {
-        if(roadPoints.length > 0) {
-          const randomIndex = Math.floor(Math.random() * roadPoints.length);
-          const point = roadPoints[randomIndex];
-          createCoin(point.x, point.y);
-        }
-      }
-    }
-    
-    function createCoin(x, y) {
-      const coin = document.createElement('div');
-      coin.className = 'coin';
-      coin.style.left = x + 'px';
-      coin.style.top = y + 'px';
-      viewport.appendChild(coin);
-      coins.push({ element: coin, x: x, y: y });
-    }
-    
-    function checkCollision(carX, carY, coinObj) {
-      const coinX = coinObj.x;
-      const coinY = coinObj.y;
-      
-      const distance = Math.sqrt(
-        Math.pow(carX - coinX, 2) + 
-        Math.pow(carY - coinY, 2)
+
+    this.input.on('pointerdown', (pointer) => {
+      this.targetX = pointer.worldX;
+      this.targetY = pointer.worldY;
+    });
+
+    // Initialize target position
+    this.targetX = this.car.x;
+    this.targetY = this.car.y;
+  }
+
+  update() {
+    if (this.targetX !== undefined && this.targetY !== undefined) {
+      // Calculate angle to target
+      const angle = Phaser.Math.Angle.Between(
+        this.car.x, this.car.y,
+        this.targetX, this.targetY
       );
-      
-      return distance < COIN_COLLECT_DISTANCE;
-    }
-    
-    function updateGame() {
-      const dx = mouseX - carX;
-      const dy = mouseY - carY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      const speed = 5;
-      
-      if (distance > speed) {
-        carX += dx / distance * speed;
-        carY += dy / distance * speed;
-      } else {
-        carX = mouseX;
-        carY = mouseY;
+
+      // Rotate car
+      this.car.setRotation(angle + Math.PI/2);
+
+      // Move towards target
+      const distance = Phaser.Math.Distance.Between(
+        this.car.x, this.car.y,
+        this.targetX, this.targetY
+      );
+
+      if (distance > 5) {
+        const speed = 5;
+        this.car.x += Math.cos(angle) * speed;
+        this.car.y += Math.sin(angle) * speed;
       }
-      
-      updateViewport();
-      
-      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-      car.style.transform = `translate(-50%, -50%) rotate(${angle + 90}deg)`;
-      
-      coins.forEach((coinObj, index) => {
-        if(checkCollision(carX, carY, coinObj)) {
-          coinObj.element.remove();
-          coins.splice(index, 1);
-          score += 10;
-          scoreElement.textContent = `Score: ${score}`;
-          
-          if(roadPoints.length > 0) {
-            const randomIndex = Math.floor(Math.random() * roadPoints.length);
-            const point = roadPoints[randomIndex];
-            createCoin(point.x, point.y);
-          }
+
+      // Check coin collisions
+      this.coins.forEach((coin, index) => {
+        const coinDistance = Phaser.Math.Distance.Between(
+          this.car.x, this.car.y,
+          coin.x, coin.y
+        );
+
+        if (coinDistance < 40) {
+          coin.destroy();
+          this.coins.splice(index, 1);
+          this.score += 10;
+          document.getElementById('score').textContent = `Score: ${this.score}`;
+          this.spawnCoin();
         }
       });
-      
-      requestAnimationFrame(updateGame);
     }
+  }
+
+  loadNewMap() {
+    const timestamp = new Date().getTime();
+    const imageUrl = `https://image.pollinations.ai/prompt/A%20colorful%20children%27s%20play%20carpet%20with%20roads,%20buildings,%20and%20trees,%20birds-eye%20view,%20vintage%20style,%20warm%20colors,%20educational%20toy,%20white%20road%20lines,%20dashed%20center%20lines?${timestamp}`;
     
-    newMapButton.addEventListener('click', loadNewMap);
-    redetectButton.addEventListener('click', detectRoads);
-    
-    loadNewMap();
-    updateGame();
-    </script>
-    <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
-</body>
-    </html>
+    this.load.image('map', imageUrl);
+    this.load.once('complete', () => {
+      const background = this.add.image(1000, 750, 'map');
+      background.setDisplaySize(2000, 1500);
+      this.detectRoads();
+      this.spawnInitialCoins();
+    });
+    this.load.start();
+  }
+
+  detectRoads() {
+    // Simplified road detection for demo
+    // In real implementation, would analyze the map texture
+    this.roadPoints = [];
+    for(let x = 100; x < 1900; x += 100) {
+      for(let y = 100; y < 1400; y += 100) {
+        this.roadPoints.push({x, y});
+      }
+    }
+  }
+
+  spawnInitialCoins() {
+    for(let i = 0; i < 20; i++) {
+      this.spawnCoin();
+    }
+  }
+
+  spawnCoin() {
+    if(this.roadPoints.length > 0) {
+      const point = Phaser.Utils.Array.GetRandom(this.roadPoints);
+      const coin = this.add.circle(point.x, point.y, 15, 0xffd700);
+      this.coins.push(coin);
+
+      // Add coin animation
+      this.tweens.add({
+        targets: coin,
+        scale: { from: 1, to: 0.8 },
+        duration: 1000,
+        yoyo: true,
+        repeat: -1
+      });
+    }
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: window.innerWidth,
+  height: window.innerHeight,
+  parent: 'game-container',
+  scene: PlayScene,
+  physics: {
+    default: 'arcade',
+    arcade: {
+      debug: false
+    }
+  }
+};
+
+const game = new Phaser.Game(config);
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  game.scale.resize(window.innerWidth, window.innerHeight);
+});
+
+// New map button handler
+document.getElementById('newMap').addEventListener('click', () => {
+  game.scene.getScene('PlayScene').scene.restart();
+});
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body></html>
