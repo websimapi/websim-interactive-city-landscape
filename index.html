@@ -47,12 +47,15 @@
   }
 
   .car {
-    position: absolute;
+    position: fixed;
     width: 60px;
     height: 60px;
     transform-origin: center;
     z-index: 1000;
     pointer-events: none;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) rotate(0deg);
   }
 
   .coin {
@@ -111,18 +114,18 @@
   <div class="viewport">
     <canvas id="canvas" width="2000" height="1500"></canvas>
     <canvas id="debugCanvas" width="2000" height="1500"></canvas>
-    <svg id="car" class="car" viewBox="0 0 100 100">
-      <path d="M20,65 Q50,75 80,65 L90,45 Q50,35 10,45 L20,65" 
-            fill="#FF4444" stroke="#000" stroke-width="2"/>
-      <path d="M15,45 Q50,35 85,45 L80,30 Q50,20 20,30 L15,45" 
-            fill="#FF6666" stroke="#000" stroke-width="2"/>
-      <circle cx="30" cy="65" r="8" fill="#333"/>
-      <circle cx="70" cy="65" r="8" fill="#333"/>
-      <rect x="35" y="35" width="30" height="15" fill="#88CCFF" rx="2"/>
-      <line x1="50" y1="35" x2="50" y2="50" stroke="#333" stroke-width="2"/>
-    </svg>
   </div>
 </div>
+<svg id="car" class="car" viewBox="0 0 100 100">
+  <path d="M20,65 Q50,75 80,65 L90,45 Q50,35 10,45 L20,65" 
+        fill="#FF4444" stroke="#000" stroke-width="2"/>
+  <path d="M15,45 Q50,35 85,45 L80,30 Q50,20 20,30 L15,45" 
+        fill="#FF6666" stroke="#000" stroke-width="2"/>
+  <circle cx="30" cy="65" r="8" fill="#333"/>
+  <circle cx="70" cy="65" r="8" fill="#333"/>
+  <rect x="35" y="35" width="30" height="15" fill="#88CCFF" rx="2"/>
+  <line x1="50" y1="35" x2="50" y2="50" stroke="#333" stroke-width="2"/>
+</svg>
 
 <script>
 const carpet = document.querySelector('.carpet');
@@ -166,20 +169,6 @@ function handlePointerMove(e) {
   // Update target coordinates
   mouseX = point.x;
   mouseY = point.y;
-  
-  // Update car position with bounds checking
-  carX = Math.max(30, Math.min(mouseX, canvas.width - 30));
-  carY = Math.max(30, Math.min(mouseY, canvas.height - 30));
-  
-  // Calculate movement angle
-  const dx = e.movementX || 0;
-  const dy = e.movementY || 0;
-  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-  
-  // Update car position and rotation
-  car.style.transform = `translate(${carX}px, ${carY}px) rotate(${angle + 90}deg)`;
-  
-  updateViewport();
 }
 
 carpet.addEventListener('mousemove', handlePointerMove);
@@ -208,7 +197,6 @@ function loadNewMap() {
     mouseY = carY;
     
     updateViewport();
-    car.style.transform = `translate(${carX}px, ${carY}px)`;
   };
 }
 
@@ -297,23 +285,37 @@ function createCoin(x, y) {
 }
 
 function checkCollision(carX, carY, coinElement) {
-  const coinRect = coinElement.getBoundingClientRect();
-  const carpetRect = carpet.getBoundingClientRect();
-  const viewportTransform = new DOMMatrix(getComputedStyle(viewport).transform);
-  const inverse = viewportTransform.inverse();
-  
-  const coinPoint = new DOMPoint(coinRect.left - carpetRect.left, coinRect.top - carpetRect.top)
-    .matrixTransform(inverse);
+  const coinX = parseFloat(coinElement.style.left);
+  const coinY = parseFloat(coinElement.style.top);
   
   const distance = Math.sqrt(
-    Math.pow(carX - coinPoint.x, 2) + 
-    Math.pow(carY - coinPoint.y, 2)
+    Math.pow(carX - coinX, 2) + 
+    Math.pow(carY - coinY, 2)
   );
   
-  return distance < 60;
+  return distance < 50; 
 }
 
 function updateGame() {
+  const dx = mouseX - carX;
+  const dy = mouseY - carY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  
+  const speed = 5; 
+  
+  if (distance > speed) {
+    carX += dx / distance * speed;
+    carY += dy / distance * speed;
+  } else {
+    carX = mouseX;
+    carY = mouseY;
+  }
+  
+  updateViewport();
+  
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  car.style.transform = `translate(-50%, -50%) rotate(${angle + 90}deg)`;
+  
   coins.forEach((coin, index) => {
     if(checkCollision(carX, carY, coin)) {
       coin.remove();
@@ -339,4 +341,5 @@ loadNewMap();
 updateGame();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
-</body></html>
+</body>
+</html>
