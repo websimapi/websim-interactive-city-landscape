@@ -2,14 +2,12 @@
 <style>
   body {
     margin: 0;
-    padding: 20px;
+    padding: 0;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     background: #f0f0f0;
-    flex-direction: column;
-    gap: 20px;
     overflow: hidden;
     touch-action: none;
   }
@@ -66,73 +64,58 @@
     border-radius: 50%;
     animation: coinSpin 1s infinite linear;
     pointer-events: none;
-    transition: all 0.3s ease-out;
+    box-shadow: 0 0 10px rgba(255,215,0,0.5);
   }
 
   @keyframes coinSpin {
-    0% { transform: scale(1) rotate(0deg); }
-    50% { transform: scale(0.8) rotate(180deg); }
-    100% { transform: scale(1) rotate(360deg); }
+    0% { transform: scale(1); }
+    50% { transform: scale(0.8); }
+    100% { transform: scale(1); }
   }
 
-  .coin.collected {
-    transform: scale(2) rotate(720deg);
-    opacity: 0;
-  }
-
-  #score {
+  .ui-container {
     position: fixed;
     bottom: 20px;
-    right: 20px;
-    font-size: 24px;
-    font-family: Arial, sans-serif;
-    background: white;
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 20px;
     z-index: 2000;
   }
 
-  .debug-controls {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    z-index: 2000;
-    background: white;
-    padding: 10px;
-    border-radius: 5px;
+  .ui-panel {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     display: flex;
     gap: 10px;
     align-items: center;
   }
 
-  .score-popup {
-    position: absolute;
-    color: gold;
-    font-size: 20px;
-    font-weight: bold;
-    font-family: Arial, sans-serif;
-    pointer-events: none;
-    z-index: 2001;
-    text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
-    animation: scorePopup 1s ease-out forwards;
+  button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    background: #4CAF50;
+    color: white;
+    cursor: pointer;
+    transition: background 0.3s;
   }
 
-  @keyframes scorePopup {
-    0% { transform: translateY(0) scale(1); opacity: 1; }
-    100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+  button:hover {
+    background: #45a049;
+  }
+
+  #score {
+    font-size: 24px;
+    font-family: Arial, sans-serif;
+    color: #333;
   }
 </style>
 </head>
 <body>
-<div class="debug-controls">
-  <label>
-    <input type="checkbox" id="showDebug"> Show Road Detection Debug View
-  </label>
-  <button id="redetectRoads">Redetect Roads</button>
-  <button id="newMap">New Map</button>
-</div>
-<div id="score">Score: 0</div>
 <div class="carpet">
   <div class="viewport">
     <canvas id="canvas" width="2000" height="1500"></canvas>
@@ -149,6 +132,19 @@
   <rect x="35" y="35" width="30" height="15" fill="#88CCFF" rx="2"/>
   <line x1="50" y1="35" x2="50" y2="50" stroke="#333" stroke-width="2"/>
 </svg>
+
+<div class="ui-container">
+  <div class="ui-panel">
+    <label>
+      <input type="checkbox" id="showDebug"> Debug View
+    </label>
+    <button id="redetectRoads">Redetect Roads</button>
+    <button id="newMap">New Map</button>
+  </div>
+  <div class="ui-panel">
+    <div id="score">Score: 0</div>
+  </div>
+</div>
 
 <script>
 const carpet = document.querySelector('.carpet');
@@ -171,6 +167,7 @@ let mouseX = carX;
 let mouseY = carY;
 let scoreElement = document.getElementById('score');
 const ZOOM_LEVEL = 2;
+const COIN_COLLECT_DISTANCE = 40;
 
 function handlePointerMove(e) {
   e.preventDefault();
@@ -214,6 +211,8 @@ function loadNewMap() {
     carY = canvas.height / 2;
     mouseX = carX;
     mouseY = carY;
+    score = 0;
+    scoreElement.textContent = `Score: ${score}`;
     
     updateViewport();
   };
@@ -303,17 +302,6 @@ function createCoin(x, y) {
   coins.push(coin);
 }
 
-function createScorePopup(x, y) {
-  const popup = document.createElement('div');
-  popup.className = 'score-popup';
-  popup.textContent = '+10';
-  popup.style.left = x + 'px';
-  popup.style.top = y + 'px';
-  viewport.appendChild(popup);
-  
-  popup.addEventListener('animationend', () => popup.remove());
-}
-
 function checkCollision(carX, carY, coinElement) {
   const coinX = parseFloat(coinElement.style.left);
   const coinY = parseFloat(coinElement.style.top);
@@ -323,26 +311,7 @@ function checkCollision(carX, carY, coinElement) {
     Math.pow(carY - coinY, 2)
   );
   
-  return distance < 40; 
-}
-
-function collectCoin(coin, index) {
-  coin.classList.add('collected');
-  createScorePopup(parseFloat(coin.style.left), parseFloat(coin.style.top));
-  
-  setTimeout(() => {
-    coin.remove();
-    coins.splice(index, 1);
-    
-    if(roadPoints.length > 0) {
-      const randomIndex = Math.floor(Math.random() * roadPoints.length);
-      const point = roadPoints[randomIndex];
-      createCoin(point.x, point.y);
-    }
-  }, 300);
-  
-  score += 10;
-  scoreElement.textContent = `Score: ${score}`;
+  return distance < COIN_COLLECT_DISTANCE;
 }
 
 function updateGame() {
@@ -350,7 +319,7 @@ function updateGame() {
   const dy = mouseY - carY;
   const distance = Math.sqrt(dx * dx + dy * dy);
   
-  const speed = 5; 
+  const speed = 5;
   
   if (distance > speed) {
     carX += dx / distance * speed;
@@ -366,8 +335,17 @@ function updateGame() {
   car.style.transform = `translate(-50%, -50%) rotate(${angle + 90}deg)`;
   
   coins.forEach((coin, index) => {
-    if(checkCollision(carX, carY, coin) && !coin.classList.contains('collected')) {
-      collectCoin(coin, index);
+    if(checkCollision(carX, carY, coin)) {
+      coin.remove();
+      coins.splice(index, 1);
+      score += 10;
+      scoreElement.textContent = `Score: ${score}`;
+      
+      if(roadPoints.length > 0) {
+        const randomIndex = Math.floor(Math.random() * roadPoints.length);
+        const point = roadPoints[randomIndex];
+        createCoin(point.x, point.y);
+      }
     }
   });
   
@@ -381,4 +359,5 @@ loadNewMap();
 updateGame();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
-</body></html>
+</body>
+</html>
